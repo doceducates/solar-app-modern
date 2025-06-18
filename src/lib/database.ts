@@ -294,7 +294,6 @@ export class DatabaseOperations {
       }
     };
   }
-
   // Panel Presets
   getAllPanelPresets(): PanelPreset[] {
     const stmt = this.db.prepare(`
@@ -302,9 +301,42 @@ export class DatabaseOperations {
       ORDER BY category, power DESC
     `);
     
-    const rows = stmt.all() as any[];
-    
-    return rows.map(row => ({
+    const rows = stmt.all() as Array<{
+      id: string;
+      name: string;
+      description: string;
+      manufacturer: string | null;
+      model: string | null;
+      category: string;
+      voltage: number;
+      current: number;
+      power: number;
+      voc: number;
+      isc: number;
+      max_series_fuse: number;
+      max_system_voltage: number;
+      temperature_coefficient: number | null;
+      efficiency: number | null;
+      length: number | null;
+      width: number | null;
+      thickness: number | null;
+      weight: number | null;
+      power_tolerance_positive: number | null;
+      power_tolerance_negative: number | null;
+      bifacial: number;
+      bifacial_factor: number | null;
+      cell_type: string | null;
+      glass_type: string | null;
+      frame_color: string | null;
+      mechanical_load_positive: number | null;
+      mechanical_load_negative: number | null;
+      warranty_years: number | null;
+      degradation_first_year: number | null;
+      degradation_annual: number | null;
+      is_custom: number;
+      country_availability: string | null;
+    }>;
+      return rows.map(row => ({
       id: row.id,
       name: row.name,
       description: row.description,
@@ -335,7 +367,7 @@ export class DatabaseOperations {
       // Advanced specifications
       powerTolerancePositive: row.power_tolerance_positive || undefined,
       powerToleranceNegative: row.power_tolerance_negative || undefined,
-      bifacial: row.bifacial || false,
+      bifacial: Boolean(row.bifacial),
       bifacialFactor: row.bifacial_factor || undefined,
       cellType: row.cell_type || undefined,
       glassType: row.glass_type || undefined,
@@ -344,16 +376,50 @@ export class DatabaseOperations {
       // Mechanical specifications
       mechanicalLoadPositive: row.mechanical_load_positive || undefined,
       mechanicalLoadNegative: row.mechanical_load_negative || undefined,
-        // Warranty and degradation
+      
+      // Warranty and degradation
       warrantyYears: row.warranty_years || undefined,
       degradationFirstYear: row.degradation_first_year || undefined,
       degradationAnnual: row.degradation_annual || undefined
     }));
   }
-
   getPanelPresetById(id: string): PanelPreset | null {
     const stmt = this.db.prepare('SELECT * FROM panel_presets WHERE id = ?');
-    const row = stmt.get(id) as any;
+    const row = stmt.get(id) as {
+      id: string;
+      name: string;
+      description: string;
+      manufacturer: string | null;
+      model: string | null;
+      category: string;
+      voltage: number;
+      current: number;
+      power: number;
+      voc: number;
+      isc: number;
+      max_series_fuse: number;
+      max_system_voltage: number;
+      temperature_coefficient: number | null;
+      efficiency: number | null;
+      length: number | null;
+      width: number | null;
+      thickness: number | null;
+      weight: number | null;
+      power_tolerance_positive: number | null;
+      power_tolerance_negative: number | null;
+      bifacial: number;
+      bifacial_factor: number | null;
+      cell_type: string | null;
+      glass_type: string | null;
+      frame_color: string | null;
+      mechanical_load_positive: number | null;
+      mechanical_load_negative: number | null;
+      warranty_years: number | null;
+      degradation_first_year: number | null;
+      degradation_annual: number | null;
+      is_custom: number;
+      country_availability: string | null;
+    } | undefined;
     
     if (!row) return null;
     
@@ -384,11 +450,10 @@ export class DatabaseOperations {
       width: row.width || undefined,
       thickness: row.thickness || undefined,
       weight: row.weight || undefined,
-      
-      // Advanced specifications
+        // Advanced specifications
       powerTolerancePositive: row.power_tolerance_positive || undefined,
       powerToleranceNegative: row.power_tolerance_negative || undefined,
-      bifacial: row.bifacial || false,
+      bifacial: Boolean(row.bifacial),
       bifacialFactor: row.bifacial_factor || undefined,
       cellType: row.cell_type || undefined,
       glassType: row.glass_type || undefined,
@@ -554,9 +619,21 @@ export class DatabaseOperations {
       console.error('Failed to seed country:', error);
       return false;
     }
-  }
-  seedPanelPreset(preset: PanelPreset): boolean {
+  }  seedPanelPreset(preset: PanelPreset): boolean {
     try {
+      console.log(`Seeding panel preset: ${preset.name}`);
+      console.log(`Preset data:`, {
+        id: preset.id,
+        name: preset.name,
+        voltage: preset.voltage,
+        current: preset.current,
+        power: preset.power,
+        voc: preset.voc,
+        isc: preset.isc,
+        maxSeriesFuse: preset.maxSeriesFuse,
+        maxSystemVoltage: preset.maxSystemVoltage
+      });
+      
       const stmt = this.db.prepare(`
         INSERT OR IGNORE INTO panel_presets (
           id, name, description, manufacturer, model, category,
@@ -591,8 +668,8 @@ export class DatabaseOperations {
         preset.width || null,
         preset.thickness || null,
         preset.weight || null,
-        preset.powerTolerancePositive || null,
-        preset.powerToleranceNegative || null,        preset.bifacial ? 1 : 0,
+        preset.powerTolerancePositive || null,        preset.powerToleranceNegative || null,
+        preset.bifacial ? 1 : 0,
         preset.bifacialFactor || null,
         preset.cellType || null,
         preset.glassType || null,
@@ -602,13 +679,15 @@ export class DatabaseOperations {
         preset.warrantyYears || null,
         preset.degradationFirstYear || null,
         preset.degradationAnnual || null,
-        false, // is_custom = false for seeded presets
-        preset.countryAvailability ? JSON.stringify(preset.countryAvailability) : null
+        false, // is_custom = false for seeded presets        preset.countryAvailability ? JSON.stringify(preset.countryAvailability) : null
       );
+      
+      console.log(`Insert result:`, { changes: result.changes, lastInsertRowid: result.lastInsertRowid });
       
       return result.changes > 0;
     } catch (error) {
       console.error('Failed to seed panel preset:', error);
+      console.error('Preset that failed:', preset);
       return false;
     }
   }
