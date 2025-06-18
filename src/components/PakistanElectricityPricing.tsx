@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -65,8 +65,7 @@ export function PakistanElectricityPricing({
       slab.id === id ? { ...slab, [field]: value } : slab
     ));
   };
-
-  const calculateElectricityBill = () => {
+  const calculateElectricityBill = useCallback(() => {
     let totalCost = 0;
     let unitsRemaining = monthlyConsumption;
     let marginalRate = 0;
@@ -110,9 +109,9 @@ export function PakistanElectricityPricing({
       baseCharges: totalCost - fixedCharges - taxAmount,
       taxAmount
     };
-  };
+  }, [monthlyConsumption, fixedCharges, fuelAdjustment, taxes, slabs]);
 
-  const billCalculation = calculateElectricityBill();
+  const billCalculation = useMemo(() => calculateElectricityBill(), [calculateElectricityBill]);
 
   // Update parent component with calculated rates
   React.useEffect(() => {
