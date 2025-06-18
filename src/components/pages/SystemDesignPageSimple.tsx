@@ -12,6 +12,10 @@ import { Separator } from '@/components/ui/separator';
 import { AlertTriangle, CheckCircle, Zap, Settings, Calculator, TrendingUp } from 'lucide-react';
 import { usePanelPresets, useInverterPresets } from '@/hooks/useDatabase';
 import { PanelPreset, InverterPreset } from '@/types';
+import { 
+  calculateSystemParameters, 
+  validateSystemCompatibility
+} from '@/lib/calculations';
 
 interface SystemDesignState {
   selectedPanel: PanelPreset | null;
@@ -38,8 +42,7 @@ export default function SystemDesignPage() {
   });
 
   const [activeTab, setActiveTab] = useState('design');
-
-  // Calculate system configuration and compatibility
+  // Calculate comprehensive system configuration and compatibility
   const systemAnalysis = useMemo(() => {
     if (!systemConfig.selectedPanel || !systemConfig.selectedInverter) {
       return null;
@@ -48,88 +51,38 @@ export default function SystemDesignPage() {
     const panel = systemConfig.selectedPanel;
     const inverter = systemConfig.selectedInverter;
     
-    // Calculate series string configuration
-    const stringVoltage = panel.voltage * systemConfig.seriesConfig;
-    const stringCurrent = panel.current;
-    const stringPower = panel.power * systemConfig.seriesConfig;
-    
-    // Calculate total system power
-    const totalSystemPower = systemConfig.numPanels * panel.power;
-    const totalInverterCapacity = systemConfig.numInverters * inverter.ratedPower;
-    
-    // Voltage compatibility check
-    const voltageCompatible = stringVoltage >= inverter.mpptVoltageRange.min && 
-                            stringVoltage <= inverter.mpptVoltageRange.max;
-    
-    // Current compatibility check (per string)
-    const currentCompatible = stringCurrent <= inverter.maxSolarCurrent;
-    
-    // Power compatibility check
-    const powerPerInverter = totalSystemPower / systemConfig.numInverters;
-    const powerCompatible = powerPerInverter <= inverter.maxPvPower;
-    
-    // VOC safety check
-    const vocSafety = systemConfig.seriesConfig * panel.voc <= inverter.maxSolarVoltage;
-    
-    const issues: string[] = [];
-    const warnings: string[] = [];
-    const recommendations: string[] = [];
-    
-    if (!voltageCompatible) {
-      issues.push(`String voltage (${stringVoltage.toFixed(1)}V) outside inverter MPPT range (${inverter.mpptVoltageRange.min}-${inverter.mpptVoltageRange.max}V)`);
-    }
-    
-    if (!currentCompatible) {
-      issues.push(`String current (${stringCurrent.toFixed(1)}A) exceeds inverter maximum (${inverter.maxSolarCurrent}A)`);
-    }
-    
-    if (!powerCompatible) {
-      issues.push(`Power per inverter (${(powerPerInverter/1000).toFixed(1)}kW) exceeds inverter PV capacity (${(inverter.maxPvPower/1000).toFixed(1)}kW)`);
-    }
-    
-    if (!vocSafety) {
-      issues.push(`Open circuit voltage (${(systemConfig.seriesConfig * panel.voc).toFixed(1)}V) exceeds inverter maximum (${inverter.maxSolarVoltage}V)`);
-    }
-    
-    // Utilization warnings
-    const voltageUtilization = (stringVoltage / inverter.mpptVoltageRange.max) * 100;
-    const currentUtilization = (stringCurrent / inverter.maxSolarCurrent) * 100;
-    const powerUtilization = (powerPerInverter / inverter.maxPvPower) * 100;
-    
-    if (voltageUtilization < 50) {
-      warnings.push(`Low voltage utilization (${voltageUtilization.toFixed(1)}%) - consider more panels per string`);
-    }
-    
-    if (powerUtilization < 70) {
-      recommendations.push(`Consider increasing array size for better inverter utilization`);
-    }
-    
-    if (powerUtilization > 130) {
-      warnings.push(`Array oversizing (${powerUtilization.toFixed(1)}%) may cause power clipping`);
-    }
+    // Use enhanced calculations
+    const systemCalc = calculateSystemParameters(
+      panel,
+      inverter,
+      systemConfig.seriesConfig,
+      systemConfig.parallelConfig,
+      systemConfig.numInverters,
+      systemConfig.systemEfficiency
+    );
 
-    const isCompatible = voltageCompatible && currentCompatible && powerCompatible && vocSafety;
+    // Validate compatibility with detailed analysis
+    const compatibility = validateSystemCompatibility(panel, inverter, systemCalc);
 
+    // Legacy compatibility for existing UI
     return {
-      stringVoltage,
-      stringCurrent,
-      stringPower,
-      totalSystemPower,
-      totalInverterCapacity,
-      powerPerInverter,
-      isCompatible,
-      voltageCompatible,
-      currentCompatible,
-      powerCompatible,
-      vocSafety,
-      issues,
-      warnings,
-      recommendations,
-      utilizationFactors: {
-        voltage: voltageUtilization,
-        current: currentUtilization,
-        power: powerUtilization
-      }
+      ...systemCalc,
+      isCompatible: compatibility.isCompatible,
+      issues: compatibility.issues,
+      warnings: compatibility.warnings,
+      recommendations: compatibility.recommendations,
+      compatibilityScore: compatibility.compatibilityScore,
+      // Legacy fields for backward compatibility
+      stringVoltage: systemCalc.stringVoltage,
+      stringCurrent: systemCalc.stringCurrent,
+      stringPower: systemCalc.stringPower,
+      totalSystemPower: systemCalc.totalSystemPower,
+      totalInverterCapacity: systemConfig.numInverters * inverter.ratedPower,
+      powerPerInverter: systemCalc.stringPower * systemCalc.stringsPerInverter,
+      voltageCompatible: systemCalc.stringVoltage >= inverter.mpptVoltageRange.min && 
+                       systemCalc.stringVoltage <= inverter.mpptVoltageRange.max,      currentCompatible: (systemCalc.stringCurrent * systemCalc.stringsPerInverter) <= inverter.maxSolarCurrent,
+      powerCompatible: (systemCalc.stringPower * systemCalc.stringsPerInverter) <= inverter.maxPvPower,
+      vocSafety: systemCalc.stringVoc <= inverter.maxSolarVoltage
     };
   }, [systemConfig]);
 
@@ -593,134 +546,281 @@ export default function SystemDesignPage() {
                 </CardContent>
               </Card>
             )}
-          </TabsContent>
-
-          {/* Calculations Tab */}
+          </TabsContent>          {/* Calculations Tab */}
           <TabsContent value="calculations" className="space-y-6">
             {systemAnalysis && systemConfig.selectedPanel && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Series Configuration */}
+              <div className="space-y-6">
+                {/* System Overview */}
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg text-blue-600">System Voltage</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div>
+                          <span className="text-sm text-gray-600">Operating (Vmp):</span>
+                          <div className="text-2xl font-bold text-blue-700">{systemAnalysis.totalSystemVoltage.toFixed(1)}V</div>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-600">Open Circuit (VOC):</span>
+                          <div className="text-lg font-medium text-blue-600">{systemAnalysis.totalSystemVoc.toFixed(1)}V</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg text-green-600">System Current</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div>
+                          <span className="text-sm text-gray-600">Operating (Imp):</span>
+                          <div className="text-2xl font-bold text-green-700">{systemAnalysis.totalSystemCurrent.toFixed(1)}A</div>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-600">Short Circuit (ISC):</span>
+                          <div className="text-lg font-medium text-green-600">{systemAnalysis.totalSystemIsc.toFixed(1)}A</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg text-purple-600">System Power</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div>
+                          <span className="text-sm text-gray-600">DC Power:</span>
+                          <div className="text-2xl font-bold text-purple-700">{(systemAnalysis.totalSystemPower/1000).toFixed(1)}kW</div>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-600">Efficiency:</span>
+                          <div className="text-lg font-medium text-purple-600">{(systemAnalysis.derating.totalDerating * 100).toFixed(1)}%</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg text-orange-600">Configuration</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div>
+                          <span className="text-sm text-gray-600">String Config:</span>
+                          <div className="text-xl font-bold text-orange-700">{systemAnalysis.panelsPerString}S × {systemAnalysis.stringsPerInverter}P</div>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-600">Total Panels:</span>
+                          <div className="text-lg font-medium text-orange-600">{systemConfig.seriesConfig * systemConfig.parallelConfig * systemConfig.numInverters}</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Per-Inverter Breakdown */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-blue-600">Series Configuration</CardTitle>
-                    <CardDescription>
-                      {systemConfig.seriesConfig} panels in series per string
-                    </CardDescription>
+                    <CardTitle className="text-lg">Per-Inverter Breakdown</CardTitle>
+                    <CardDescription>Individual inverter loading and utilization</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <span className="text-gray-600">Voltage (Vmp):</span>
-                          <div className="font-medium">{systemAnalysis.stringVoltage.toFixed(1)}V</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {systemAnalysis.perInverterBreakdown.map((inverterData, index) => (
+                        <div key={index} className="bg-gray-50 p-4 rounded-lg">
+                          <h4 className="font-medium mb-3 text-gray-900">Inverter {inverterData.inverterId}</h4>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                              <span className="text-gray-600">Voltage:</span>
+                              <div className="font-medium">{inverterData.voltage.toFixed(1)}V</div>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Current:</span>
+                              <div className="font-medium">{inverterData.current.toFixed(1)}A</div>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Power:</span>
+                              <div className="font-medium">{(inverterData.power/1000).toFixed(1)}kW</div>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Strings:</span>
+                              <div className="font-medium">{inverterData.stringCount}</div>
+                            </div>
+                            <div className="col-span-2">
+                              <span className="text-gray-600">Utilization:</span>
+                              <div className="flex items-center gap-2">
+                                <div className="font-medium">{inverterData.utilizationPercent.toFixed(1)}%</div>
+                                <div className={`px-2 py-1 rounded text-xs font-medium ${
+                                  inverterData.utilizationPercent > 120 ? 'bg-red-100 text-red-800' :
+                                  inverterData.utilizationPercent > 90 ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-green-100 text-green-800'
+                                }`}>
+                                  {inverterData.utilizationPercent > 120 ? 'High' :
+                                   inverterData.utilizationPercent > 90 ? 'Good' : 'Low'}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-gray-600">Current (Imp):</span>
-                          <div className="font-medium">{systemAnalysis.stringCurrent.toFixed(1)}A</div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Safety Margins */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                        <AlertTriangle className="w-4 h-4 text-red-600" />
+                      </div>
+                      Safety Margins
+                    </CardTitle>
+                    <CardDescription>Safety margins for critical parameters</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <span className="text-sm text-gray-600">Voltage Margin:</span>
+                        <div className={`text-lg font-medium ${
+                          systemAnalysis.safetyMargins.voltageMargin < 10 ? 'text-red-600' :
+                          systemAnalysis.safetyMargins.voltageMargin < 20 ? 'text-yellow-600' :
+                          'text-green-600'
+                        }`}>
+                          {systemAnalysis.safetyMargins.voltageMargin.toFixed(1)}%
                         </div>
-                        <div>
-                          <span className="text-gray-600">Power:</span>
-                          <div className="font-medium">{(systemAnalysis.stringPower/1000).toFixed(1)}kW</div>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-600">Current Margin:</span>
+                        <div className={`text-lg font-medium ${
+                          systemAnalysis.safetyMargins.currentMargin < 10 ? 'text-red-600' :
+                          systemAnalysis.safetyMargins.currentMargin < 20 ? 'text-yellow-600' :
+                          'text-green-600'
+                        }`}>
+                          {systemAnalysis.safetyMargins.currentMargin.toFixed(1)}%
                         </div>
-                        <div>
-                          <span className="text-gray-600">VOC:</span>
-                          <div className="font-medium">{(systemConfig.seriesConfig * systemConfig.selectedPanel.voc).toFixed(1)}V</div>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-600">Power Margin:</span>
+                        <div className={`text-lg font-medium ${
+                          systemAnalysis.safetyMargins.powerMargin < 10 ? 'text-red-600' :
+                          systemAnalysis.safetyMargins.powerMargin < 20 ? 'text-yellow-600' :
+                          'text-green-600'
+                        }`}>
+                          {systemAnalysis.safetyMargins.powerMargin.toFixed(1)}%
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-600">VOC Margin:</span>
+                        <div className={`text-lg font-medium ${
+                          systemAnalysis.safetyMargins.vocMargin < 10 ? 'text-red-600' :
+                          systemAnalysis.safetyMargins.vocMargin < 20 ? 'text-yellow-600' :
+                          'text-green-600'
+                        }`}>
+                          {systemAnalysis.safetyMargins.vocMargin.toFixed(1)}%
                         </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Parallel Configuration */}
+                {/* Real-World Performance */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-green-600">Parallel Configuration</CardTitle>
-                    <CardDescription>
-                      {systemConfig.parallelConfig} strings in parallel
-                    </CardDescription>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                        <TrendingUp className="w-4 h-4 text-green-600" />
+                      </div>
+                      Real-World Performance
+                    </CardTitle>
+                    <CardDescription>Expected system performance under real conditions</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <span className="text-gray-600">Voltage (Vmp):</span>
-                          <div className="font-medium">{systemAnalysis.stringVoltage.toFixed(1)}V</div>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Current (Imp):</span>
-                          <div className="font-medium">{(systemAnalysis.stringCurrent * systemConfig.parallelConfig).toFixed(1)}A</div>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Power:</span>
-                          <div className="font-medium">{(systemAnalysis.stringPower * systemConfig.parallelConfig / 1000).toFixed(1)}kW</div>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">ISC:</span>
-                          <div className="font-medium">{(systemConfig.selectedPanel.isc * systemConfig.parallelConfig).toFixed(1)}A</div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="bg-green-50 p-4 rounded-lg">
+                        <h4 className="font-medium text-green-900 mb-2">Energy Production</h4>
+                        <div className="space-y-2">
+                          <div>
+                            <span className="text-sm text-green-700">Daily:</span>
+                            <div className="text-xl font-bold text-green-800">{systemAnalysis.realWorldPerformance.dailyEnergyProduction.toFixed(1)} kWh</div>
+                          </div>
+                          <div>
+                            <span className="text-sm text-green-700">Annual:</span>
+                            <div className="text-lg font-medium text-green-700">{systemAnalysis.realWorldPerformance.annualEnergyProduction.toFixed(0)} kWh</div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                      
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <h4 className="font-medium text-blue-900 mb-2">System Efficiency</h4>
+                        <div className="space-y-2">
+                          <div>
+                            <span className="text-sm text-blue-700">Capacity Factor:</span>
+                            <div className="text-xl font-bold text-blue-800">{systemAnalysis.realWorldPerformance.capacityFactor.toFixed(1)}%</div>
+                          </div>
+                          <div>
+                            <span className="text-sm text-blue-700">Derating:</span>
+                            <div className="text-lg font-medium text-blue-700">{(systemAnalysis.derating.totalDerating * 100).toFixed(1)}%</div>
+                          </div>
+                        </div>
+                      </div>
 
-                {/* Total System */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-purple-600">Total System</CardTitle>
-                    <CardDescription>
-                      Complete system with {systemConfig.numInverters} inverter(s)
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <span className="text-gray-600">Total Panels:</span>
-                          <div className="font-medium">{systemConfig.seriesConfig * systemConfig.parallelConfig * systemConfig.numInverters}</div>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Total Power:</span>
-                          <div className="font-medium">{(systemAnalysis.totalSystemPower/1000).toFixed(1)}kW</div>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Inverter Capacity:</span>
-                          <div className="font-medium">{(systemAnalysis.totalInverterCapacity/1000).toFixed(1)}kW</div>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">DC/AC Ratio:</span>
-                          <div className="font-medium">{(systemAnalysis.totalSystemPower / systemAnalysis.totalInverterCapacity).toFixed(2)}</div>
+                      <div className="bg-purple-50 p-4 rounded-lg">
+                        <h4 className="font-medium text-purple-900 mb-2">Utilization</h4>
+                        <div className="space-y-2">
+                          <div>
+                            <span className="text-sm text-purple-700">MPPT Efficiency:</span>
+                            <div className="text-xl font-bold text-purple-800">{systemAnalysis.utilizationFactors.mpptEfficiency.toFixed(1)}%</div>
+                          </div>
+                          <div>
+                            <span className="text-sm text-purple-700">Power Utilization:</span>
+                            <div className="text-lg font-medium text-purple-700">{systemAnalysis.utilizationFactors.power.toFixed(1)}%</div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </CardContent>                </Card>
               </div>
-            )}
-
-            {!systemAnalysis && (
-              <Card>
-                <CardContent className="text-center py-12">
-                  <Calculator className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Ready for Calculations</h3>
-                  <p className="text-gray-600">
-                    Configure your system in the Design tab to see detailed electrical calculations.
-                  </p>
-                </CardContent>
-              </Card>
             )}
           </TabsContent>
 
           {/* Analysis Tab */}
           <TabsContent value="analysis" className="space-y-6">
-            <Card>
-              <CardContent className="text-center py-12">
-                <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Advanced Analysis</h3>
-                <p className="text-gray-600">
-                  Performance analysis, cost calculations, and ROI projections coming soon...
-                </p>
-              </CardContent>
-            </Card>
+            {!systemAnalysis && (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <Calculator className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Ready for Analysis</h3>
+                  <p className="text-gray-600">
+                    Configure your system in the Design tab to see detailed performance analysis.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+            
+            {systemAnalysis && (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Advanced Analysis</h3>
+                  <p className="text-gray-600">
+                    Performance analysis, cost calculations, and ROI projections coming soon...
+                  </p>
+                  <div className="mt-4">
+                    <Badge variant="outline" className="text-green-600 border-green-600">
+                      Compatibility Score: {systemAnalysis.compatibilityScore || 0}/100
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
       </div>

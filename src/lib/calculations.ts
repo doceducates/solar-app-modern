@@ -5,11 +5,78 @@ import {
   ConfigurationResults,
   SafetyCheck,
   SafetyChecks,
-  EnvironmentalImpact
+  EnvironmentalImpact,
+  PanelPreset,
+  InverterPreset
 } from '@/types';
 import {
   ENVIRONMENTAL_CONSTANTS
 } from '@/constants/panels';
+
+// Enhanced system calculation types
+export interface SystemCalculationResults {
+  totalSystemVoltage: number;
+  totalSystemCurrent: number;
+  totalSystemPower: number;
+  totalSystemVoc: number;
+  totalSystemIsc: number;
+  stringsPerInverter: number;
+  panelsPerString: number;
+  stringVoltage: number;
+  stringCurrent: number;
+  stringPower: number;
+  stringVoc: number;
+  stringIsc: number;
+  perInverterBreakdown: InverterBreakdown[];
+  safetyMargins: SafetyMargins;
+  utilizationFactors: UtilizationFactors;
+  derating: DeratingFactors;
+  realWorldPerformance: RealWorldPerformance;
+}
+
+export interface InverterBreakdown {
+  inverterId: number;
+  voltage: number;
+  current: number;
+  power: number;
+  voc: number;
+  isc: number;
+  stringCount: number;
+  utilizationPercent: number;
+}
+
+export interface SafetyMargins {
+  voltageMargin: number;
+  currentMargin: number;
+  powerMargin: number;
+  vocMargin: number;
+  temperatureMargin: number;
+}
+
+export interface UtilizationFactors {
+  voltage: number;
+  current: number;
+  power: number;
+  mpptEfficiency: number;
+}
+
+export interface DeratingFactors {
+  temperature: number;
+  shading: number;
+  soiling: number;
+  mismatch: number;
+  connections: number;
+  inverterEfficiency: number;
+  totalDerating: number;
+}
+
+export interface RealWorldPerformance {
+  nominalPower: number;
+  deratedPower: number;
+  annualEnergyProduction: number; // kWh
+  dailyEnergyProduction: number; // kWh
+  capacityFactor: number; // %
+}
 
 /**
  * Calculate series configuration results
@@ -376,5 +443,274 @@ export function calculateCombinedConfiguration(
     voltage: panelSpecs.voltage * seriesCount,
     current: panelSpecs.current * parallelCount,
     power: panelSpecs.power * totalPanels * efficiencyFactor
+  };
+}
+
+/**
+ * Calculate comprehensive system parameters with enhanced accuracy
+ */
+export function calculateSystemParameters(
+  panel: PanelPreset,
+  inverter: InverterPreset,
+  seriesConfig: number,
+  parallelConfig: number,
+  numInverters: number,
+  systemEfficiency: number = 85,
+  environmentalConditions: {
+    temperature: number; // °C
+    irradiance: number; // W/m²
+    shadingFactor: number; // 0-1
+  } = { temperature: 25, irradiance: 1000, shadingFactor: 1 }
+): SystemCalculationResults {
+  
+  // Calculate derating factors
+  const deratingFactors = calculateDeratingFactors(
+    environmentalConditions.temperature,
+    environmentalConditions.shadingFactor,
+    systemEfficiency
+  );
+
+  // String calculations (series)
+  const panelsPerString = seriesConfig;
+  const stringVoltage = panel.voltage * panelsPerString;
+  const stringCurrent = panel.current;
+  const stringPower = panel.power * panelsPerString;
+  const stringVoc = panel.voc * panelsPerString;
+  const stringIsc = panel.isc;
+
+  // Total strings in system
+  const totalStrings = parallelConfig * numInverters;
+  const stringsPerInverter = parallelConfig;
+
+  // System totals (all inverters combined)
+  const totalSystemVoltage = stringVoltage; // Same as string voltage
+  const totalSystemCurrent = stringCurrent * totalStrings;
+  const totalSystemPower = stringPower * totalStrings;
+  const totalSystemVoc = stringVoc; // Same as string VOC
+  const totalSystemIsc = stringIsc * totalStrings;
+
+  // Apply derating to power calculations
+  const deratedStringPower = stringPower * deratingFactors.totalDerating;
+  const deratedSystemPower = totalSystemPower * deratingFactors.totalDerating;
+
+  // Per-inverter breakdown
+  const perInverterBreakdown: InverterBreakdown[] = [];
+  for (let i = 1; i <= numInverters; i++) {
+    const inverterPower = deratedStringPower * stringsPerInverter;
+    const utilizationPercent = (inverterPower / inverter.ratedPower) * 100;
+    
+    perInverterBreakdown.push({
+      inverterId: i,
+      voltage: stringVoltage,
+      current: stringCurrent * stringsPerInverter,
+      power: inverterPower,
+      voc: stringVoc,
+      isc: stringIsc * stringsPerInverter,
+      stringCount: stringsPerInverter,
+      utilizationPercent
+    });
+  }
+
+  // Safety margins
+  const safetyMargins: SafetyMargins = {
+    voltageMargin: ((inverter.maxSolarVoltage - stringVoc) / inverter.maxSolarVoltage) * 100,
+    currentMargin: ((inverter.maxSolarCurrent - (stringCurrent * stringsPerInverter)) / inverter.maxSolarCurrent) * 100,
+    powerMargin: ((inverter.maxPvPower - (deratedStringPower * stringsPerInverter)) / inverter.maxPvPower) * 100,
+    vocMargin: ((inverter.maxSolarVoltage - stringVoc) / inverter.maxSolarVoltage) * 100,
+    temperatureMargin: 15 // Assumed safety margin for temperature variations
+  };
+
+  // Utilization factors
+  const utilizationFactors: UtilizationFactors = {
+    voltage: (stringVoltage / inverter.mpptVoltageRange.max) * 100,
+    current: ((stringCurrent * stringsPerInverter) / inverter.maxSolarCurrent) * 100,
+    power: ((deratedStringPower * stringsPerInverter) / inverter.maxPvPower) * 100,
+    mpptEfficiency: calculateMpptEfficiency(stringVoltage, inverter)
+  };  // Real-world performance calculations (TODO: Implement later)
+  const realWorldPerformance: RealWorldPerformance = {
+    nominalPower: totalSystemPower,
+    deratedPower: deratedSystemPower,
+    annualEnergyProduction: 0, // TODO: Calculate based on location and weather data
+    dailyEnergyProduction: 0, // TODO: Calculate based on peak sun hours
+    capacityFactor: 20 // TODO: Calculate based on environmental conditions
+  };
+
+  return {
+    totalSystemVoltage,
+    totalSystemCurrent,
+    totalSystemPower: deratedSystemPower,
+    totalSystemVoc,
+    totalSystemIsc,
+    stringsPerInverter,
+    panelsPerString,
+    stringVoltage,
+    stringCurrent,
+    stringPower: deratedStringPower,
+    stringVoc,
+    stringIsc,
+    perInverterBreakdown,
+    safetyMargins,
+    utilizationFactors,
+    derating: deratingFactors,
+    realWorldPerformance
+  };
+}
+
+/**
+ * Calculate derating factors for realistic power output
+ */
+export function calculateDeratingFactors(
+  temperature: number = 25,
+  shadingFactor: number = 1,
+  systemEfficiency: number = 85
+): DeratingFactors {
+  // Temperature derating (assuming -0.4%/°C for crystalline silicon)
+  const temperatureCoeff = -0.004; // per °C
+  const temperatureDelta = temperature - 25; // STC is 25°C
+  const temperatureDerating = 1 + (temperatureCoeff * temperatureDelta);
+
+  // Other derating factors (industry standard values)
+  const deratingFactors: DeratingFactors = {
+    temperature: Math.max(0.7, Math.min(1.05, temperatureDerating)), // 70% to 105%
+    shading: shadingFactor, // User-defined or calculated
+    soiling: 0.95, // 5% loss from dust/dirt
+    mismatch: 0.98, // 2% loss from panel mismatch
+    connections: 0.995, // 0.5% loss from connections
+    inverterEfficiency: systemEfficiency / 100,
+    totalDerating: 0 // Will be calculated
+  };
+
+  // Calculate total derating
+  deratingFactors.totalDerating = 
+    deratingFactors.temperature *
+    deratingFactors.shading *
+    deratingFactors.soiling *
+    deratingFactors.mismatch *
+    deratingFactors.connections *
+    deratingFactors.inverterEfficiency;
+
+  return deratingFactors;
+}
+
+/**
+ * Calculate MPPT efficiency based on voltage operating point
+ */
+export function calculateMpptEfficiency(
+  operatingVoltage: number,
+  inverter: InverterPreset
+): number {
+  const { min, max } = inverter.mpptVoltageRange;
+  const optimalVoltage = (min + max) / 2;
+  
+  // Calculate efficiency based on distance from optimal point
+  const normalizedDistance = Math.abs(operatingVoltage - optimalVoltage) / (max - min);
+  
+  // Efficiency drops as we move away from optimal point
+  const efficiency = Math.max(0.94, 0.98 - (normalizedDistance * 0.04));
+  
+  return efficiency * 100; // Return as percentage
+}
+
+/**
+ * Calculate real-world performance metrics (TODO: Implement later)
+ */
+export function calculateRealWorldPerformance(
+  deratedPower: number,
+  nominalPower: number
+): RealWorldPerformance {
+  // TODO: Implement comprehensive real-world performance calculations
+  // - Location-specific irradiance data
+  // - Weather patterns and seasonal variations
+  // - Shading analysis
+  // - System degradation over time
+  
+  return {
+    nominalPower,
+    deratedPower,
+    annualEnergyProduction: 0, // Placeholder
+    dailyEnergyProduction: 0,  // Placeholder
+    capacityFactor: 20         // Placeholder
+  };
+}
+
+/**
+ * Enhanced compatibility validation with detailed analysis
+ */
+export function validateSystemCompatibility(
+  panel: PanelPreset,
+  inverter: InverterPreset,
+  systemCalc: SystemCalculationResults
+): {
+  isCompatible: boolean;
+  issues: string[];
+  warnings: string[];
+  recommendations: string[];
+  compatibilityScore: number; // 0-100
+} {
+  const issues: string[] = [];
+  const warnings: string[] = [];
+  const recommendations: string[] = [];
+  
+  // Critical compatibility checks
+  let compatibilityScore = 100;
+
+  // VOC safety check (most critical)
+  if (systemCalc.stringVoc > inverter.maxSolarVoltage) {
+    issues.push(`String VOC (${systemCalc.stringVoc.toFixed(1)}V) exceeds inverter maximum (${inverter.maxSolarVoltage}V) - SAFETY RISK`);
+    compatibilityScore -= 50;
+  } else if (systemCalc.safetyMargins.vocMargin < 10) {
+    warnings.push(`Low VOC safety margin (${systemCalc.safetyMargins.vocMargin.toFixed(1)}%)`);
+    compatibilityScore -= 10;
+  }
+
+  // MPPT range check
+  if (systemCalc.stringVoltage < inverter.mpptVoltageRange.min || 
+      systemCalc.stringVoltage > inverter.mpptVoltageRange.max) {
+    issues.push(`String voltage (${systemCalc.stringVoltage.toFixed(1)}V) outside MPPT range (${inverter.mpptVoltageRange.min}-${inverter.mpptVoltageRange.max}V)`);
+    compatibilityScore -= 30;
+  }
+
+  // Current compatibility
+  const maxStringCurrent = systemCalc.stringCurrent * systemCalc.stringsPerInverter;
+  if (maxStringCurrent > inverter.maxSolarCurrent) {
+    issues.push(`Total current per inverter (${maxStringCurrent.toFixed(1)}A) exceeds maximum (${inverter.maxSolarCurrent}A)`);
+    compatibilityScore -= 25;
+  }
+
+  // Power compatibility
+  const powerPerInverter = systemCalc.stringPower * systemCalc.stringsPerInverter;
+  if (powerPerInverter > inverter.maxPvPower * 1.4) { // Allow up to 40% oversizing
+    issues.push(`Power per inverter (${(powerPerInverter/1000).toFixed(1)}kW) exceeds safe oversizing limit`);
+    compatibilityScore -= 20;
+  } else if (powerPerInverter > inverter.maxPvPower * 1.2) {
+    warnings.push(`High power oversizing (${((powerPerInverter/inverter.maxPvPower)*100).toFixed(1)}%) may cause clipping`);
+    compatibilityScore -= 5;
+  }
+
+  // Utilization warnings and recommendations
+  if (systemCalc.utilizationFactors.voltage < 50) {
+    recommendations.push(`Low voltage utilization (${systemCalc.utilizationFactors.voltage.toFixed(1)}%) - consider more panels per string`);
+    compatibilityScore -= 5;
+  }
+
+  if (systemCalc.utilizationFactors.power < 70) {
+    recommendations.push(`Low power utilization (${systemCalc.utilizationFactors.power.toFixed(1)}%) - consider larger array`);
+    compatibilityScore -= 5;
+  }
+
+  // Temperature considerations
+  if (systemCalc.safetyMargins.temperatureMargin < 10) {
+    warnings.push('Consider additional temperature safety margin for extreme weather conditions');
+    compatibilityScore -= 5;
+  }
+
+  const isCompatible = issues.length === 0;
+  
+  return {
+    isCompatible,
+    issues,
+    warnings,
+    recommendations,
+    compatibilityScore: Math.max(0, compatibilityScore)
   };
 }

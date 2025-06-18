@@ -13,7 +13,8 @@ import {
   Settings,
   Sun,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -26,6 +27,7 @@ interface AppLayoutProps {
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Calculator', href: '/calculator', icon: Calculator },
+  { name: 'System Design', href: '/system-design', icon: Zap },
   { name: 'Cost Analysis', href: '/cost-analysis', icon: DollarSign },
   { name: 'Comparison', href: '/comparison', icon: BarChart3 },
   { name: 'Settings', href: '/settings', icon: Settings },
