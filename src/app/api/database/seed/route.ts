@@ -18,50 +18,22 @@ export async function POST() {
         presets: existingPresets.length 
       });
     }
-      // Seed countries
+
+    // Seed countries
     let countriesSeeded = 0;
     if (existingCountries.length === 0) {
       for (const country of COUNTRIES) {
-        // Use the addCountry method if it exists, or create one
-        const dbInstance = (db as any).db; // Access the private db instance
-        const insertCountry = dbInstance.prepare(`
-          INSERT OR IGNORE INTO countries (
-            id, name, currency_code, currency_name, currency_symbol,
-            panel_cost_per_watt, installation_cost_per_watt, electricity_rate,
-            labor_rate, permit_cost, max_system_voltage, requires_permit,
-            grid_tie_allowed, net_metering_available
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-        
-        insertCountry.run(
-          country.id,
-          country.name,
-          country.currency.code,
-          country.currency.name,
-          country.currency.symbol,
-          country.pricing.panelCostPerWatt,
-          country.pricing.installationCostPerWatt,
-          country.pricing.electricityRate,
-          country.pricing.laborRate,
-          country.pricing.permitCost,
-          country.regulations.maxSystemVoltage,
-          country.regulations.requiresPermit ? 1 : 0,
-          country.regulations.gridTieAllowed ? 1 : 0,
-          country.regulations.netMeteringAvailable ? 1 : 0
-        );
-        countriesSeeded++;
+        const seeded = db.seedCountry(country);
+        if (seeded) countriesSeeded++;
       }
     }
-    
+
     // Seed panel presets
     let presetsSeeded = 0;
     if (existingPresets.length === 0) {
       for (const preset of PANEL_PRESETS) {
-        db.addPanelPreset({
-          ...preset,
-          isCustom: false
-        });
-        presetsSeeded++;
+        const seeded = db.seedPanelPreset(preset);
+        if (seeded) presetsSeeded++;
       }
     }
     
@@ -69,15 +41,21 @@ export async function POST() {
       success: true,
       message: 'Database seeded successfully',
       countriesSeeded,
-      presetsSeeded
+      presetsSeeded,
+      totalCountries: existingCountries.length + countriesSeeded,
+      totalPresets: existingPresets.length + presetsSeeded
     });
     
   } catch (error) {
-    console.error('Failed to seed database:', error);
-    return NextResponse.json({ 
-      error: 'Failed to seed database',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    console.error('Database seeding error:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Failed to seed database',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
   }
 }
 
@@ -87,13 +65,15 @@ export async function GET() {
     const presets = db.getAllPanelPresets();
     
     return NextResponse.json({
-      status: 'Database status',
       countries: countries.length,
       presets: presets.length,
-      needsSeeding: countries.length === 0 || presets.length === 0
+      seeded: countries.length > 0 && presets.length > 0
     });
   } catch (error) {
-    console.error('Failed to check database status:', error);
-    return NextResponse.json({ error: 'Failed to check database status' }, { status: 500 });
+    console.error('Database status check error:', error);
+    return NextResponse.json(
+      { error: 'Failed to check database status' },
+      { status: 500 }
+    );
   }
 }

@@ -465,6 +465,42 @@ export class DatabaseOperations {
       return false;
     }
   }
+
+  seedPanelPreset(preset: PanelPreset): boolean {
+    try {
+      const stmt = this.db.prepare(`
+        INSERT OR IGNORE INTO panel_presets (
+          id, name, description, manufacturer, model, category,
+          voltage, current, power, voc, isc, max_series_fuse,
+          max_system_voltage, temperature_coefficient, efficiency, is_custom
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      
+      const result = stmt.run(
+        preset.id,
+        preset.name,
+        preset.description || '',
+        preset.manufacturer || '',
+        preset.model || '',
+        preset.category,
+        preset.voltage,
+        preset.current,
+        preset.power,
+        preset.voc,
+        preset.isc,
+        preset.maxSeriesFuse,
+        preset.maxSystemVoltage,
+        preset.temperatureCoefficient || null,
+        preset.efficiency || null,
+        preset.id.startsWith('custom-') ? 1 : 0
+      );
+      
+      return result.changes > 0;
+    } catch (error) {
+      console.error('Failed to seed panel preset:', error);
+      return false;
+    }
+  }
 }
 
 export default getDatabase;
