@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Settings, Palette, Globe, Download, Info } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { DatabaseMigrator } from '@/components/DatabaseMigrator';
 
 export function SettingsPage() {
   return (
@@ -137,6 +138,11 @@ export function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Database Management */}
+      <div className="lg:col-span-2">
+        <DatabaseMigrator />
       </div>
 
       {/* Help & Support */}

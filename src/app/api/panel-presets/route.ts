@@ -5,7 +5,10 @@ const db = new DatabaseOperations();
 
 export async function GET() {
   try {
+    console.log('API: Fetching panel presets...');
     const presets = db.getAllPanelPresets();
+    console.log('API: Found presets:', presets.length);
+    console.log('API: First preset:', presets[0]);
     return NextResponse.json(presets);
   } catch (error) {
     console.error('Failed to fetch panel presets:', error);

@@ -286,8 +286,7 @@ export class DatabaseOperations {
         electricityRate: row.electricity_rate,
         laborRate: row.labor_rate,
         permitCost: row.permit_cost
-      },
-      regulations: {
+      },      regulations: {
         maxSystemVoltage: row.max_system_voltage,
         requiresPermit: Boolean(row.requires_permit),
         gridTieAllowed: Boolean(row.grid_tie_allowed),
@@ -303,23 +302,7 @@ export class DatabaseOperations {
       ORDER BY category, power DESC
     `);
     
-    const rows = stmt.all() as Array<{
-      id: string;
-      name: string;
-      description: string;
-      manufacturer: string | null;
-      model: string | null;
-      category: string;
-      voltage: number;
-      current: number;
-      power: number;
-      voc: number;
-      isc: number;
-      max_series_fuse: number;
-      max_system_voltage: number;
-      temperature_coefficient: number | null;
-      efficiency: number | null;
-    }>;
+    const rows = stmt.all() as any[];
     
     return rows.map(row => ({
       id: row.id,
@@ -328,37 +311,49 @@ export class DatabaseOperations {
       manufacturer: row.manufacturer || undefined,
       model: row.model || undefined,
       category: row.category as 'residential' | 'commercial' | 'utility' | 'small',
+      countryAvailability: row.country_availability ? JSON.parse(row.country_availability) : undefined,
+      
+      // Core electrical specifications
       voltage: row.voltage,
       current: row.current,
       power: row.power,
       voc: row.voc,
       isc: row.isc,
+      
+      // Safety and system specifications
       maxSeriesFuse: row.max_series_fuse,
       maxSystemVoltage: row.max_system_voltage,
       temperatureCoefficient: row.temperature_coefficient || undefined,
-      efficiency: row.efficiency || undefined
+      efficiency: row.efficiency || undefined,
+      
+      // Physical specifications
+      length: row.length || undefined,
+      width: row.width || undefined,
+      thickness: row.thickness || undefined,
+      weight: row.weight || undefined,
+      
+      // Advanced specifications
+      powerTolerancePositive: row.power_tolerance_positive || undefined,
+      powerToleranceNegative: row.power_tolerance_negative || undefined,
+      bifacial: row.bifacial || false,
+      bifacialFactor: row.bifacial_factor || undefined,
+      cellType: row.cell_type || undefined,
+      glassType: row.glass_type || undefined,
+      frameColor: row.frame_color || undefined,
+      
+      // Mechanical specifications
+      mechanicalLoadPositive: row.mechanical_load_positive || undefined,
+      mechanicalLoadNegative: row.mechanical_load_negative || undefined,
+        // Warranty and degradation
+      warrantyYears: row.warranty_years || undefined,
+      degradationFirstYear: row.degradation_first_year || undefined,
+      degradationAnnual: row.degradation_annual || undefined
     }));
   }
 
   getPanelPresetById(id: string): PanelPreset | null {
     const stmt = this.db.prepare('SELECT * FROM panel_presets WHERE id = ?');
-    const row = stmt.get(id) as {
-      id: string;
-      name: string;
-      description: string;
-      manufacturer: string | null;
-      model: string | null;
-      category: string;
-      voltage: number;
-      current: number;
-      power: number;
-      voc: number;
-      isc: number;
-      max_series_fuse: number;
-      max_system_voltage: number;
-      temperature_coefficient: number | null;
-      efficiency: number | null;
-    } | undefined;
+    const row = stmt.get(id) as any;
     
     if (!row) return null;
     
@@ -369,15 +364,44 @@ export class DatabaseOperations {
       manufacturer: row.manufacturer || undefined,
       model: row.model || undefined,
       category: row.category as 'residential' | 'commercial' | 'utility' | 'small',
+      countryAvailability: row.country_availability ? JSON.parse(row.country_availability) : undefined,
+      
+      // Core electrical specifications
       voltage: row.voltage,
       current: row.current,
       power: row.power,
       voc: row.voc,
       isc: row.isc,
+      
+      // Safety and system specifications
       maxSeriesFuse: row.max_series_fuse,
       maxSystemVoltage: row.max_system_voltage,
       temperatureCoefficient: row.temperature_coefficient || undefined,
-      efficiency: row.efficiency || undefined
+      efficiency: row.efficiency || undefined,
+      
+      // Physical specifications
+      length: row.length || undefined,
+      width: row.width || undefined,
+      thickness: row.thickness || undefined,
+      weight: row.weight || undefined,
+      
+      // Advanced specifications
+      powerTolerancePositive: row.power_tolerance_positive || undefined,
+      powerToleranceNegative: row.power_tolerance_negative || undefined,
+      bifacial: row.bifacial || false,
+      bifacialFactor: row.bifacial_factor || undefined,
+      cellType: row.cell_type || undefined,
+      glassType: row.glass_type || undefined,
+      frameColor: row.frame_color || undefined,
+      
+      // Mechanical specifications
+      mechanicalLoadPositive: row.mechanical_load_positive || undefined,
+      mechanicalLoadNegative: row.mechanical_load_negative || undefined,
+      
+      // Warranty and degradation
+      warrantyYears: row.warranty_years || undefined,
+      degradationFirstYear: row.degradation_first_year || undefined,
+      degradationAnnual: row.degradation_annual || undefined
     };
   }
 
@@ -460,6 +484,42 @@ export class DatabaseOperations {
     }>;
   }
 
+  // Database management methods
+  clearAllData(): boolean {
+    try {
+      // Clear in reverse dependency order
+      this.db.exec('DELETE FROM calculation_history');
+      this.db.exec('DELETE FROM user_configurations');
+      this.db.exec('DELETE FROM panel_presets');
+      this.db.exec('DELETE FROM countries');
+      
+      console.log('All database tables cleared');
+      return true;
+    } catch (error) {
+      console.error('Failed to clear database:', error);
+      throw error;
+    }
+  }
+
+  getDatabaseStats(): { countries: number; presets: number; configurations: number; calculations: number } {
+    try {
+      const countryCount = this.db.prepare('SELECT COUNT(*) as count FROM countries').get() as { count: number };
+      const presetCount = this.db.prepare('SELECT COUNT(*) as count FROM panel_presets').get() as { count: number };
+      const configCount = this.db.prepare('SELECT COUNT(*) as count FROM user_configurations').get() as { count: number };
+      const calcCount = this.db.prepare('SELECT COUNT(*) as count FROM calculation_history').get() as { count: number };
+      
+      return {
+        countries: countryCount.count,
+        presets: presetCount.count,
+        configurations: configCount.count,
+        calculations: calcCount.count
+      };
+    } catch (error) {
+      console.error('Failed to get database stats:', error);
+      return { countries: 0, presets: 0, configurations: 0, calculations: 0 };
+    }
+  }
+
   // Database seeding methods
   seedCountry(country: CountryPricing): boolean {
     try {
@@ -532,11 +592,11 @@ export class DatabaseOperations {
         preset.thickness || null,
         preset.weight || null,
         preset.powerTolerancePositive || null,
-        preset.powerToleranceNegative || null,
-        preset.bifacial ? 1 : 0,
+        preset.powerToleranceNegative || null,        preset.bifacial ? 1 : 0,
         preset.bifacialFactor || null,
         preset.cellType || null,
-        preset.glassType || null,        preset.frameColor || null,
+        preset.glassType || null,
+        preset.frameColor || null,
         preset.mechanicalLoadPositive || null,
         preset.mechanicalLoadNegative || null,
         preset.warrantyYears || null,

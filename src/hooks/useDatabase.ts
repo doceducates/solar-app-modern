@@ -52,14 +52,18 @@ export function usePanelPresets() {
   const fetchPresets = useCallback(async () => {
     try {
       setLoading(true);
+      console.log('Fetching panel presets...');
       const response = await fetch('/api/panel-presets');
+      console.log('Response status:', response.status);
       if (!response.ok) {
         throw new Error('Failed to fetch panel presets');
       }
       const data = await response.json();
+      console.log('Panel presets data:', data);
       setPresets(data);
       setError(null);
     } catch (err) {
+      console.error('Error fetching presets:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
       setPresets([]);
     } finally {
