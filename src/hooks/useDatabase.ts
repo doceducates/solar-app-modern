@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { PanelPreset, PanelSpecifications, SystemConfiguration, ConfigurationResults, SafetyChecks } from '@/types';
+import { PanelPreset, PanelSpecifications, SystemConfiguration, ConfigurationResults, SafetyChecks, InverterPreset } from '@/types';
 import { CountryPricing } from '@/constants/countries';
 
 // Custom hooks for database operations
@@ -269,5 +269,49 @@ export function useDatabaseSeeding() {
     error,
     checkStatus,
     seedDatabase
+  };
+}
+
+export function useInverterPresets() {
+  const [inverters, setInverters] = useState<InverterPreset[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchInverters = useCallback(async () => {
+    try {
+      setLoading(true);
+      console.log('Fetching inverter presets...');
+      // For now, return the static inverter presets since we haven't created the API yet
+      const { INVERTER_PRESETS } = await import('@/constants/inverters');
+      setInverters(INVERTER_PRESETS);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching inverters:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error');
+      setInverters([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchInverters();
+  }, [fetchInverters]);
+
+  const getInverterById = useCallback((id: string) => {
+    return inverters.find(inverter => inverter.id === id) || null;
+  }, [inverters]);
+
+  const getInverterByName = useCallback((name: string) => {
+    return inverters.find(inverter => inverter.name === name) || null;
+  }, [inverters]);
+
+  return {
+    inverters,
+    loading,
+    error,
+    refetch: fetchInverters,
+    getInverterById,
+    getInverterByName
   };
 }

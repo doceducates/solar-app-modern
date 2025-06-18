@@ -325,3 +325,56 @@ export function findOptimalConfiguration(
     }
   };
 }
+
+/**
+ * Calculate series configuration for a specific number of panels
+ */
+export function calculateSeriesConfiguration(
+  panelSpecs: PanelSpecifications,
+  numPanels: number,
+  systemEfficiency: number = 85
+): CalculationResults {
+  const efficiencyFactor = systemEfficiency / 100;
+  
+  return {
+    voltage: panelSpecs.voltage * numPanels,
+    current: panelSpecs.current,
+    power: panelSpecs.power * numPanels * efficiencyFactor
+  };
+}
+
+/**
+ * Calculate parallel configuration for a specific number of panels
+ */
+export function calculateParallelConfiguration(
+  panelSpecs: PanelSpecifications,
+  numPanels: number,
+  systemEfficiency: number = 85
+): CalculationResults {
+  const efficiencyFactor = systemEfficiency / 100;
+  
+  return {
+    voltage: panelSpecs.voltage,
+    current: panelSpecs.current * numPanels,
+    power: panelSpecs.power * numPanels * efficiencyFactor
+  };
+}
+
+/**
+ * Calculate combined series-parallel configuration
+ */
+export function calculateCombinedConfiguration(
+  panelSpecs: PanelSpecifications,
+  seriesCount: number,
+  parallelCount: number,
+  systemEfficiency: number = 85
+): CalculationResults {
+  const efficiencyFactor = systemEfficiency / 100;
+  const totalPanels = seriesCount * parallelCount;
+  
+  return {
+    voltage: panelSpecs.voltage * seriesCount,
+    current: panelSpecs.current * parallelCount,
+    power: panelSpecs.power * totalPanels * efficiencyFactor
+  };
+}

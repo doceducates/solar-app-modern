@@ -163,3 +163,137 @@ export interface AppSettings {
   showAdvanced: boolean;
   autoCalculate: boolean;
 }
+
+// Inverter related types
+export interface VoltageRange {
+  min: number;
+  max: number;
+}
+
+export interface Dimensions {
+  length: number; // mm
+  width: number; // mm
+  height: number; // mm
+}
+
+export interface PriceRange {
+  min: number; // USD
+  max: number; // USD
+}
+
+export interface InverterSpecifications {
+  // Core power specifications
+  ratedPower: number; // W - Continuous rated power
+  maxPower: number; // W - Maximum power
+  continuousPower: number; // W - Continuous power rating
+  surgePower?: number; // W - Peak/surge power capability
+  
+  // DC Input specifications
+  dcVoltageNominal: number; // V - Nominal DC voltage
+  dcVoltageRange: VoltageRange; // V - Min/max DC voltage range
+  dcCurrentMax: number; // A - Maximum DC current
+  
+  // AC Output specifications
+  acVoltageNominal: number; // V - Nominal AC voltage
+  acVoltageRange: VoltageRange; // V - Min/max AC voltage range
+  acFrequency: number; // Hz - AC frequency (50/60)
+  acCurrentMax: number; // A - Maximum AC current
+  acPhases: 1 | 3; // Number of AC phases
+  
+  // Solar/MPPT specifications
+  mpptChannels: number; // Number of MPPT channels
+  maxPvPower: number; // W - Maximum PV array power
+  mpptVoltageRange: VoltageRange; // V - MPPT operating voltage range
+  maxSolarVoltage: number; // V - Maximum solar input voltage (VOC)
+  maxSolarCurrent: number; // A - Maximum solar input current
+  
+  // Battery specifications (for hybrid inverters)
+  batteryVoltage?: number; // V - Battery system voltage
+  batteryVoltageRange?: VoltageRange; // V - Battery voltage range
+  maxChargeCurrent?: number; // A - Maximum battery charge current
+  defaultChargeCurrent?: number; // A - Default charge current
+  
+  // AC Charger specifications (for hybrid inverters)
+  acChargerPower?: number; // W - AC charger power
+  acChargerVoltage?: number; // V - AC charger voltage
+  acChargerCurrent?: number; // A - AC charger current
+  
+  // Environmental specifications
+  operatingTempRange: VoltageRange; // °C - Operating temperature range
+  humidity: number; // % - Maximum humidity
+  altitude: number; // m - Maximum altitude
+  
+  // Physical specifications
+  dimensions: Dimensions; // mm - Physical dimensions
+  weight: number; // kg - Weight
+  cooling: 'passive' | 'forced_air' | 'liquid'; // Cooling method
+  enclosureRating: string; // IP rating (IP65, etc.)
+  
+  // Performance and compliance
+  certifications: string[]; // CE, UL, etc.
+  safetyClass: string; // Class I, II, etc.
+  efficiency: number; // % - Peak efficiency
+  
+  // Market and pricing
+  countryAvailability: string[]; // Available countries
+  priceRange: PriceRange; // USD price range
+  
+  // Features and capabilities
+  gridTie: boolean; // Grid-tie capability
+  offGrid: boolean; // Off-grid capability
+  batteryBackup: boolean; // Battery backup support
+  loadSharing: boolean; // Load sharing capability
+  remoteMonitoring: boolean; // Remote monitoring support
+  
+  // Installation and maintenance
+  installationType: 'indoor' | 'outdoor' | 'both'; // Installation location
+  warrantyYears: number; // Warranty period
+  maintenanceRequired: boolean; // Regular maintenance required
+}
+
+export interface InverterPreset extends InverterSpecifications {
+  id: string;
+  name: string;
+  description: string;
+  manufacturer: string;
+  model: string;
+  category: 'string' | 'microinverter' | 'optimizer' | 'hybrid'; // Inverter category
+  type: 'string' | 'microinverter' | 'central'; // Inverter type
+}
+
+export interface InverterConfiguration {
+  inverter: InverterPreset;
+  quantity: number; // Number of inverters
+  stringsPerInverter?: number; // For string inverters
+  panelsPerString?: number; // For string inverters
+  totalPanels: number;
+}
+
+export interface SystemCompatibility {
+  isCompatible: boolean;
+  voltageCompatible: boolean;
+  currentCompatible: boolean;
+  powerCompatible: boolean;
+  issues: string[];
+  warnings: string[];
+  recommendations: string[];
+}
+
+export interface InverterValidationResult {
+  panelConfiguration: {
+    totalVoltage: number;
+    totalCurrent: number;
+    totalPower: number;
+  };
+  inverterLimits: {
+    maxVoltage: number;
+    maxCurrent: number;
+    maxPower: number;
+  };
+  compatibility: SystemCompatibility;
+  utilizationFactors: {
+    voltage: number; // % of inverter capacity used
+    current: number; // % of inverter capacity used
+    power: number; // % of inverter capacity used
+  };
+}
