@@ -51,7 +51,7 @@ export default function SolarCalculator() {
     permitCost: number;
   }) => {
     setCustomCosts(newCosts);
-  }, []);
+  }, []);  
   // Handle country change and update costs accordingly
   const handleCountryChange = useCallback((newCountryId: string) => {
     setSelectedCountry(newCountryId);

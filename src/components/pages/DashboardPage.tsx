@@ -59,16 +59,14 @@ export function DashboardPage() {
   ];
 
   const systemPower = panelSpecs.power * systemConfig.panels;
-
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Welcome Section */}
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white p-8">
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 lg:p-8">
         <div className="relative z-10">
           <h1 className="text-3xl font-bold mb-2">
             Welcome to Solar Calculator
-          </h1>
-          <p className="text-blue-100 mb-6 max-w-2xl">
+          </h1>          <p className="text-blue-100 mb-4 max-w-2xl">
             Design and analyze your solar panel system with advanced calculations, 
             cost analysis, and country-specific pricing. Get started by configuring 
             your system parameters.
@@ -83,11 +81,9 @@ export function DashboardPage() {
         <div className="absolute top-0 right-0 transform translate-x-4 -translate-y-4 opacity-20">
           <Sun className="w-32 h-32" />
         </div>
-      </div>
-
-      {/* Quick Actions */}
+      </div>      {/* Quick Actions */}
       <div>
-        <h2 className="text-2xl font-semibold mb-6">Quick Actions</h2>
+        <h2 className="text-2xl font-semibold mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {quickActions.map((action) => {
             const Icon = action.icon;

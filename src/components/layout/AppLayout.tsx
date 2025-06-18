@@ -52,24 +52,19 @@ export function AppLayout({ children }: AppLayoutProps) {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* Mobile sidebar overlay */}
+    <div className="min-h-screen bg-background">      {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 z-40 lg:hidden"
+          className="fixed inset-0 z-50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         >
           <div className="fixed inset-0 bg-background/80 backdrop-blur-sm" />
         </div>
-      )}
-
-      {/* Sidebar */}
+      )}{/* Sidebar */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 flex flex-col transition-all duration-300 ease-in-out",
-        "lg:relative lg:translate-x-0",
-        sidebarOpen ? "translate-x-0" : "-translate-x-full",
+        "fixed inset-y-0 left-0 z-40 flex flex-col transition-all duration-300 ease-in-out",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         sidebarCollapsed ? "lg:w-16" : "lg:w-64",
         "w-64 bg-card border-r border-border"
       )}>
@@ -159,9 +154,8 @@ export function AppLayout({ children }: AppLayoutProps) {
       <div className={cn(
         "flex flex-col min-h-screen transition-all duration-300 ease-in-out",
         sidebarCollapsed ? "lg:ml-16" : "lg:ml-64"
-      )}>
-        {/* Top Header */}
-        <header className="sticky top-0 z-30 flex items-center justify-between p-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+      )}>        {/* Top Header */}
+        <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 lg:px-6 lg:py-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
           <div className="flex items-center gap-4">
             {/* Mobile menu button */}
             <Button
@@ -183,10 +177,8 @@ export function AppLayout({ children }: AppLayoutProps) {
           <div className="flex items-center gap-2">
             {/* Additional header actions can go here */}
           </div>
-        </header>
-
-        {/* Page content */}
-        <main className="flex-1 p-6">
+        </header>        {/* Page content */}
+        <main className="flex-1 px-4 py-6 lg:px-6 lg:py-4">
           {children}
         </main>
       </div>

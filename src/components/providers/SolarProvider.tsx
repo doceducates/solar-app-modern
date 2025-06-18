@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 import { PanelSpecifications, SystemConfiguration, ConfigurationResults, SafetyChecks, CostAnalysis } from '@/types';
 import { PANEL_PRESETS } from '@/constants/panels';
 import { getCountryById } from '@/constants/countries';
@@ -106,8 +106,7 @@ export function SolarProvider({ children }: { children: ReactNode }) {
       }));
     }
   }, []);
-
-  const contextValue: SolarContextType = {
+  const contextValue: SolarContextType = useMemo(() => ({
     ...state,
     setSelectedCountry,
     setPanelSpecs,
@@ -117,7 +116,17 @@ export function SolarProvider({ children }: { children: ReactNode }) {
     setCostAnalysis,
     setCustomCosts,
     updateCountryAndCosts
-  };
+  }), [
+    state,
+    setSelectedCountry,
+    setPanelSpecs,
+    setSystemConfig,
+    setResults,
+    setSafetyChecks,
+    setCostAnalysis,
+    setCustomCosts,
+    updateCountryAndCosts
+  ]);
 
   return (
     <SolarContext.Provider value={contextValue}>
