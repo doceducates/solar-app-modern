@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Calculator, Sun, Zap } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Calculator } from 'lucide-react';
 import { PanelSpecifications, SystemConfiguration, ConfigurationResults, SafetyChecks, CostAnalysis } from '@/types';
 import { PANEL_PRESETS } from '@/constants/panels';
 import { getCountryById } from '@/constants/countries';
@@ -38,22 +38,36 @@ export default function SolarCalculator() {
     installationHours: 40,
     permitCost: 15000
   });
+  // Get current country data - memoized to prevent unnecessary re-renders
+  const currentCountry = useMemo(() => getCountryById(selectedCountry), [selectedCountry]);
 
-  // Get current country data
-  const currentCountry = getCountryById(selectedCountry);
-  // Initialize custom costs when country changes
+  // Memoized cost change handler to prevent infinite loops
+  const handleCostChange = useCallback((newCosts: typeof customCosts) => {
+    setCustomCosts(newCosts);
+  }, []);  // Initialize custom costs when country changes
   useEffect(() => {
     if (currentCountry) {
-      setCustomCosts({
-        panelCostPerWatt: currentCountry.pricing.panelCostPerWatt,
-        installationCostPerWatt: currentCountry.pricing.installationCostPerWatt,
-        electricityRate: currentCountry.pricing.electricityRate,
-        laborRate: currentCountry.pricing.laborRate,
-        installationHours: 40,
-        permitCost: currentCountry.pricing.permitCost
+      setCustomCosts(prevCosts => {
+        // Only update if the country actually changed to prevent loops
+        if (prevCosts.panelCostPerWatt === currentCountry.pricing.panelCostPerWatt &&
+            prevCosts.installationCostPerWatt === currentCountry.pricing.installationCostPerWatt &&
+            prevCosts.electricityRate === currentCountry.pricing.electricityRate &&
+            prevCosts.laborRate === currentCountry.pricing.laborRate &&
+            prevCosts.permitCost === currentCountry.pricing.permitCost) {
+          return prevCosts; // No change needed
+        }
+        
+        return {
+          panelCostPerWatt: currentCountry.pricing.panelCostPerWatt,
+          installationCostPerWatt: currentCountry.pricing.installationCostPerWatt,
+          electricityRate: currentCountry.pricing.electricityRate,
+          laborRate: currentCountry.pricing.laborRate,
+          installationHours: 40,
+          permitCost: currentCountry.pricing.permitCost
+        };
       });
     }
-  }, [currentCountry]);  // Calculate results whenever inputs change
+  }, [currentCountry]);  // Calculate basic results whenever panel specs or system config change
   useEffect(() => {
     if (panelSpecs.voltage > 0 && panelSpecs.current > 0 && systemConfig.panels > 0) {
       const newResults = calculateAllConfigurations(panelSpecs, systemConfig);
@@ -61,49 +75,39 @@ export default function SolarCalculator() {
       
       setResults(newResults);
       setSafetyChecks(newSafetyChecks);
-
-      // Calculate cost analysis if country is selected
-      if (currentCountry) {
-        const totalPower = panelSpecs.power * systemConfig.panels;
-        const newCostAnalysis = calculateSystemCost({
-          totalPower,
-          country: currentCountry,
-          customCosts
-        });
-        setCostAnalysis(newCostAnalysis);
-      }
     } else {
       setResults(null);
       setSafetyChecks({});
+    }
+  }, [panelSpecs, systemConfig]);
+
+  // Calculate cost analysis separately to avoid infinite loops
+  useEffect(() => {
+    if (panelSpecs.power > 0 && systemConfig.panels > 0 && currentCountry) {
+      const totalPower = panelSpecs.power * systemConfig.panels;
+      const newCostAnalysis = calculateSystemCost({
+        totalPower,
+        country: currentCountry,
+        customCosts
+      });
+      setCostAnalysis(newCostAnalysis);
+    } else {
       setCostAnalysis(null);
     }
-  }, [panelSpecs, systemConfig, currentCountry, customCosts]);
-
+  }, [panelSpecs.power, systemConfig.panels, currentCountry, customCosts]);
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      {/* Header */}
-      <header className="text-center mb-8">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <div className="p-3 bg-yellow-400 rounded-full">
-            <Sun className="w-8 h-8 text-yellow-800" />
-          </div>
-          <h1 className="text-4xl font-bold text-gray-800 dark:text-white">
-            Solar Panel Calculator
-          </h1>
-          <div className="p-3 bg-blue-500 rounded-full">
-            <Zap className="w-8 h-8 text-white" />
-          </div>
-        </div>
-        <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-          Calculate theoretical power outputs for different solar panel configurations. 
-          Analyze series, parallel, and combined setups with real-time safety validation.
-        </p>
-      </header>      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">        {/* Input Panel */}
+    <div className="space-y-8">
+      {/* Input Sections */}
+      <div id="input" className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* Country & Input Panel */}
         <div className="xl:col-span-1 space-y-6">
-          <CountrySelector
-            selectedCountry={selectedCountry}
-            onCountryChange={setSelectedCountry}
-          />
+          <div id="country">
+            <CountrySelector
+              selectedCountry={selectedCountry}
+              onCountryChange={setSelectedCountry}
+            />
+          </div>
+          
           <PanelInput
             panelSpecs={panelSpecs}
             systemConfig={systemConfig}
@@ -111,52 +115,61 @@ export default function SolarCalculator() {
             onSystemConfigChange={setSystemConfig}
             selectedCountry={selectedCountry}
           />
+          
           {currentCountry && (
-            <CostInput
-              country={currentCountry}
-              customCosts={customCosts}
-              onCostChange={setCustomCosts}
-            />
+            <div id="cost">
+              <CostInput
+                country={currentCountry}
+                customCosts={customCosts}
+                onCostChange={handleCostChange}
+              />
+            </div>
           )}
         </div>
 
         {/* Results Section */}
         <div className="xl:col-span-2 space-y-6">
           {/* Configuration Tabs */}
-          <ConfigurationTabs
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            results={results}
-            panelSpecs={panelSpecs}
-            systemConfig={systemConfig}
-            safetyChecks={safetyChecks}
-          />
+          <div id="calculator">
+            <ConfigurationTabs
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              results={results}
+              panelSpecs={panelSpecs}
+              systemConfig={systemConfig}
+              safetyChecks={safetyChecks}
+            />
+          </div>
 
           {/* Results Display */}
           {results && (
-            <ResultsDisplay
-              results={results}
-              activeConfiguration={activeTab}
-              panelSpecs={panelSpecs}
-              systemConfig={systemConfig}
-            />
+            <div id="results">
+              <ResultsDisplay
+                results={results}
+                activeConfiguration={activeTab}
+                panelSpecs={panelSpecs}
+                systemConfig={systemConfig}
+              />
+            </div>
           )}
 
           {/* Cost Analysis */}
           {costAnalysis && currentCountry && (
-            <CostAnalysisDisplay
-              analysis={costAnalysis}
-              country={currentCountry}
-              systemPower={panelSpecs.power * systemConfig.panels}
-            />
+            <div id="cost-analysis">
+              <CostAnalysisDisplay
+                analysis={costAnalysis}
+                country={currentCountry}
+                systemPower={panelSpecs.power * systemConfig.panels}
+              />
+            </div>
           )}
 
           {/* Comparison Chart */}
           {results && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <div id="comparison" className="bg-card text-card-foreground rounded-xl border shadow-sm p-6">
               <div className="flex items-center gap-2 mb-4">
-                <Calculator className="w-5 h-5 text-blue-500" />
-                <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
+                <Calculator className="w-5 h-5 text-primary" />
+                <h3 className="text-xl font-semibold">
                   Configuration Comparison
                 </h3>
               </div>
@@ -165,14 +178,6 @@ export default function SolarCalculator() {
           )}
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="mt-12 text-center text-gray-500 dark:text-gray-400">
-        <p>© 2025 Solar Panel Calculator - Helping optimize your solar energy system</p>
-        <p className="text-sm mt-2">
-          Results are theoretical. Consult with solar professionals for real-world installations.
-        </p>
-      </footer>
     </div>
   );
 }

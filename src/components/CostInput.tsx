@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { CountryPricing } from '@/types';
 import { formatCurrency } from '@/constants/countries';
 import { Settings, RotateCcw, Info } from 'lucide-react';
+import { PakistanElectricityPricing } from './PakistanElectricityPricing';
 
 interface CustomCostInputs {
   panelCostPerWatt: number;
@@ -25,12 +26,19 @@ interface CostInputProps {
 }
 
 export function CostInput({ country, customCosts, onCostChange, className }: CostInputProps) {
+  const [useDetailedElectricityPricing, setUseDetailedElectricityPricing] = useState(country.id === 'pakistan');
+
   const handleInputChange = (field: keyof CustomCostInputs, value: string) => {
     const numValue = parseFloat(value) || 0;
     onCostChange({
       ...customCosts,
       [field]: numValue
     });
+  };
+
+  const handleElectricityRateFromDetailed = (averageRate: number, marginalRate: number) => {
+    // Use marginal rate for savings calculation as that's what solar will offset first
+    handleInputChange('electricityRate', marginalRate.toString());
   };
 
   const resetToDefaults = () => {
@@ -77,8 +85,37 @@ export function CostInput({ country, customCosts, onCostChange, className }: Cos
             </Button>
           </div>
         </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+      </CardHeader>      <CardContent className="space-y-4">
+        {/* Pakistani Detailed Electricity Pricing */}
+        {country.id === 'pakistan' && (
+          <>
+            <div className="flex items-center gap-2 mb-4">
+              <Button
+                variant={useDetailedElectricityPricing ? "default" : "outline"}
+                size="sm"
+                onClick={() => setUseDetailedElectricityPricing(true)}
+              >
+                Pakistani Bill Calculator
+              </Button>
+              <Button
+                variant={!useDetailedElectricityPricing ? "default" : "outline"}
+                size="sm"
+                onClick={() => setUseDetailedElectricityPricing(false)}
+              >
+                Simple Rate
+              </Button>
+            </div>
+            
+            {useDetailedElectricityPricing && (
+              <PakistanElectricityPricing
+                currency={country.currency}
+                onAverageRateCalculated={handleElectricityRateFromDetailed}
+                className="mb-4"
+              />
+            )}
+          </>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Panel Cost */}
           <div className="space-y-2">
@@ -128,12 +165,13 @@ export function CostInput({ country, customCosts, onCostChange, className }: Cos
             <div className="text-xs text-muted-foreground">
               Default: {formatCurrency(country.pricing.installationCostPerWatt, country.currency.code)}/W
             </div>
-          </div>
-
-          {/* Electricity Rate */}
+          </div>          {/* Electricity Rate */}
           <div className="space-y-2">
             <Label htmlFor="electricity-rate" className="text-sm font-medium">
               Electricity Rate per kWh
+              {country.id === 'pakistan' && useDetailedElectricityPricing && (
+                <span className="text-green-600 text-xs ml-2">(Auto-calculated from bill)</span>
+              )}
             </Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
@@ -148,10 +186,15 @@ export function CostInput({ country, customCosts, onCostChange, className }: Cos
                 onChange={(e) => handleInputChange('electricityRate', e.target.value)}
                 className="pl-8"
                 placeholder={`Default: ${country.pricing.electricityRate}`}
+                disabled={country.id === 'pakistan' && useDetailedElectricityPricing}
               />
             </div>
             <div className="text-xs text-muted-foreground">
-              Default: {formatCurrency(country.pricing.electricityRate, country.currency.code)}/kWh
+              {country.id === 'pakistan' && useDetailedElectricityPricing ? (
+                "Rate calculated from your electricity bill slabs (marginal rate for solar savings)"
+              ) : (
+                `Default: ${formatCurrency(country.pricing.electricityRate, country.currency.code)}/kWh`
+              )}
             </div>
           </div>
 
@@ -225,9 +268,7 @@ export function CostInput({ country, customCosts, onCostChange, className }: Cos
               {!country.regulations.requiresPermit && " (Not required)"}
             </div>
           </div>
-        </div>
-
-        {/* Info Section */}
+        </div>        {/* Info Section */}
         <div className="bg-muted/50 p-3 rounded-lg">
           <div className="flex items-start gap-2">
             <Info className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
@@ -236,9 +277,20 @@ export function CostInput({ country, customCosts, onCostChange, className }: Cos
               <ul className="space-y-1">
                 <li>• Panel costs vary by brand, efficiency, and bulk purchase discounts</li>
                 <li>• Installation costs depend on roof complexity and local labor rates</li>
-                <li>• Check your latest electricity bill for accurate rate per kWh</li>
+                {country.id === 'pakistan' ? (
+                  <>
+                    <li>• Use the Pakistani Bill Calculator for accurate electricity cost analysis</li>
+                    <li>• Solar savings are calculated at your highest electricity slab rate</li>
+                    <li>• Check your WAPDA/K-Electric bill for current unit rates and slabs</li>
+                    <li>• Consider net metering policies in your area for excess energy sales</li>
+                  </>
+                ) : (
+                  <>
+                    <li>• Check your latest electricity bill for accurate rate per kWh</li>
+                    <li>• Consider seasonal variations and time-of-use rates</li>
+                  </>
+                )}
                 <li>• Get multiple quotes from local installers for realistic estimates</li>
-                <li>• Consider seasonal variations and time-of-use rates</li>
               </ul>
             </div>
           </div>
