@@ -1,12 +1,12 @@
 'use client';
 
+import { useMemo, useCallback } from 'react';
 import { Settings, Info, Lightbulb } from 'lucide-react';
 import { PanelSpecifications, SystemConfiguration } from '@/types';
 import { PANEL_PRESETS } from '@/constants/panels';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface PanelInputProps {
   panelSpecs: PanelSpecifications;
@@ -22,14 +22,16 @@ export default function PanelInput({
   onPanelSpecsChange,
   onSystemConfigChange,
   selectedCountry
-}: PanelInputProps) {
-  // Filter panels by country availability
-  const availablePanels = selectedCountry 
-    ? PANEL_PRESETS.filter(panel => 
-        !panel.countryAvailability || panel.countryAvailability.includes(selectedCountry)
-      )
-    : PANEL_PRESETS;
-  const handlePresetChange = (presetId: string) => {
+}: PanelInputProps) {  // Filter panels by country availability - memoized to prevent infinite re-renders
+  const availablePanels = useMemo(() => {
+    if (!selectedCountry) {
+      return PANEL_PRESETS;
+    }
+    
+    return PANEL_PRESETS.filter(panel => 
+      !panel.countryAvailability || panel.countryAvailability.includes(selectedCountry)
+    );
+  }, [selectedCountry]);  const handlePresetChange = useCallback((presetId: string) => {
     if (presetId === 'custom') {
       // Reset to default values for custom entry
       onPanelSpecsChange({
@@ -42,26 +44,24 @@ export default function PanelInput({
         maxSystemVoltage: 0
       });
     } else {
-      const preset = availablePanels.find(p => p.id === presetId) || PANEL_PRESETS.find(p => p.id === presetId);
+      // Always search in the full PANEL_PRESETS array to avoid dependency issues
+      const preset = PANEL_PRESETS.find(p => p.id === presetId);
       if (preset) {
         onPanelSpecsChange(preset);
       }
     }
-  };
+  }, [onPanelSpecsChange]);
+  const handleSpecChange = useCallback((field: keyof PanelSpecifications, value: number) => {
+    const newSpecs = { ...panelSpecs };
+    newSpecs[field] = value;
+    onPanelSpecsChange(newSpecs);
+  }, [panelSpecs, onPanelSpecsChange]);
 
-  const handleSpecChange = (field: keyof PanelSpecifications, value: number) => {
-    onPanelSpecsChange({
-      ...panelSpecs,
-      [field]: value
-    });
-  };
-
-  const handleConfigChange = (field: keyof SystemConfiguration, value: number) => {
-    onSystemConfigChange({
-      ...systemConfig,
-      [field]: value
-    });
-  };
+  const handleConfigChange = useCallback((field: keyof SystemConfiguration, value: number) => {
+    const newConfig = { ...systemConfig };
+    newConfig[field] = value;
+    onSystemConfigChange(newConfig);
+  }, [systemConfig, onSystemConfigChange]);
   return (
     <div className="space-y-6">
       {/* Panel Presets */}
@@ -72,25 +72,23 @@ export default function PanelInput({
             Panel Specifications
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-
-        {/* Preset Selection */}        <div className="mb-6">
+        <CardContent className="space-y-6">        {/* Preset Selection */}        <div className="mb-6">
           <Label className="text-sm font-medium">
             Quick Panel Presets (Auto-fills all values):
-          </Label>
-          <Select onValueChange={handlePresetChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select a preset or enter custom values below" />
-            </SelectTrigger>
-            <SelectContent>
-              {availablePanels.map((preset) => (
-                <SelectItem key={preset.id} value={preset.id}>
-                  {preset.name} (Vmp: {preset.voltage}V, Imp: {preset.current}A)
-                </SelectItem>
-              ))}
-              <SelectItem value="custom">Custom Configuration (Clear all fields)</SelectItem>
-            </SelectContent>
-          </Select>
+          </Label>          <select 
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            onChange={(e) => handlePresetChange(e.target.value)}
+            defaultValue=""
+            aria-label="Panel presets"
+          >
+            <option value="" disabled>Select a preset or enter custom values below</option>
+            {availablePanels.map((preset) => (
+              <option key={preset.id} value={preset.id}>
+                {preset.name} (Vmp: {preset.voltage}V, Imp: {preset.current}A)
+              </option>
+            ))}
+            <option value="custom">Custom Configuration (Clear all fields)</option>
+          </select>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 italic">
             💡 Tip: If your panel matches one of these presets, select it to auto-fill all fields.
           </p>

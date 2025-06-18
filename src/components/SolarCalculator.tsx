@@ -11,7 +11,7 @@ import PanelInput from './PanelInput';
 import ConfigurationTabs from './ConfigurationTabs';
 import ResultsDisplay from './ResultsDisplay';
 import ComparisonChart from './ComparisonChart';
-import { CountrySelector } from './CountrySelector';
+// import { CountrySelector } from './CountrySelector'; // Temporarily disabled for debugging
 import { CostAnalysisDisplay } from './CostAnalysisDisplay';
 import { CostInput } from './CostInput';
 
@@ -41,12 +41,17 @@ export default function SolarCalculator() {
     };
   });  // Get current country data - memoized to prevent unnecessary re-renders
   const currentCountry = useMemo(() => getCountryById(selectedCountry), [selectedCountry]);
-
   // Memoized cost change handler to prevent infinite loops
-  const handleCostChange = useCallback((newCosts: typeof customCosts) => {
+  const handleCostChange = useCallback((newCosts: {
+    panelCostPerWatt: number;
+    installationCostPerWatt: number;
+    electricityRate: number;
+    laborRate: number;
+    installationHours: number;
+    permitCost: number;
+  }) => {
     setCustomCosts(newCosts);
   }, []);
-
   // Handle country change and update costs accordingly
   const handleCountryChange = useCallback((newCountryId: string) => {
     setSelectedCountry(newCountryId);
@@ -63,6 +68,15 @@ export default function SolarCalculator() {
         permitCost: newCountry.pricing.permitCost
       }));
     }
+  }, []);
+
+  // Stable callbacks for panel and system configuration changes
+  const handlePanelSpecsChange = useCallback((specs: PanelSpecifications) => {
+    setPanelSpecs(specs);
+  }, []);
+
+  const handleSystemConfigChange = useCallback((config: SystemConfiguration) => {
+    setSystemConfig(config);
   }, []);// Calculate basic results whenever panel specs or system config change
   useEffect(() => {
     if (panelSpecs.voltage > 0 && panelSpecs.current > 0 && systemConfig.panels > 0) {
@@ -113,17 +127,21 @@ export default function SolarCalculator() {
       <div id="input" className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Country & Input Panel */}
         <div className="xl:col-span-1 space-y-6">          <div id="country">
-            <CountrySelector
+            {/* Temporarily disabled for debugging */}
+            <div className="p-4 border rounded-lg">
+              <p>Country Selector temporarily disabled for debugging</p>
+              <p>Current country: {selectedCountry}</p>
+            </div>
+            {/* <CountrySelector
               selectedCountry={selectedCountry}
               onCountryChange={handleCountryChange}
-            />
+            /> */}
           </div>
-          
-          <PanelInput
+            <PanelInput
             panelSpecs={panelSpecs}
             systemConfig={systemConfig}
-            onPanelSpecsChange={setPanelSpecs}
-            onSystemConfigChange={setSystemConfig}
+            onPanelSpecsChange={handlePanelSpecsChange}
+            onSystemConfigChange={handleSystemConfigChange}
             selectedCountry={selectedCountry}
           />
           

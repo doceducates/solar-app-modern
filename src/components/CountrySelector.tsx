@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { COUNTRIES } from '@/constants/countries';
@@ -13,25 +13,19 @@ interface CountrySelectorProps {
 }
 
 export function CountrySelector({ selectedCountry, onCountryChange, className }: CountrySelectorProps) {
-  const selectedCountryData = COUNTRIES.find(c => c.id === selectedCountry);
+  const selectedCountryData = useMemo(() => 
+    COUNTRIES.find(c => c.id === selectedCountry), 
+    [selectedCountry]
+  );
 
   return (
     <div className={className}>
       <Label htmlFor="country-select" className="flex items-center gap-2 text-sm font-medium">
         <Globe className="h-4 w-4" />
         Country & Currency
-      </Label>
-      <Select value={selectedCountry} onValueChange={onCountryChange}>
+      </Label>      <Select value={selectedCountry} onValueChange={onCountryChange}>
         <SelectTrigger id="country-select" className="mt-1">
-          <SelectValue placeholder="Select your country">
-            {selectedCountryData && (
-              <span className="flex items-center gap-2">
-                <span className="text-lg">{selectedCountryData.currency.symbol}</span>
-                <span>{selectedCountryData.name}</span>
-                <span className="text-muted-foreground">({selectedCountryData.currency.code})</span>
-              </span>
-            )}
-          </SelectValue>
+          <SelectValue placeholder="Select your country" />
         </SelectTrigger>
         <SelectContent>
           {COUNTRIES.map((country) => (
