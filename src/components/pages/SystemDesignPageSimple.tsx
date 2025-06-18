@@ -9,12 +9,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import { AlertTriangle, CheckCircle, Zap, Settings, Calculator, TrendingUp } from 'lucide-react';
 import { usePanelPresets, useInverterPresets } from '@/hooks/useDatabase';
 import { PanelPreset, InverterPreset } from '@/types';
 import { 
   calculateSystemParameters, 
-  validateSystemCompatibility
+  validateSystemCompatibility,
+  calculateMixedPanelSystem,
+  StringConfiguration,
+  MixedSystemConfiguration
 } from '@/lib/calculations';
 
 interface SystemDesignState {
@@ -25,31 +29,72 @@ interface SystemDesignState {
   seriesConfig: number;
   parallelConfig: number;
   systemEfficiency: number;
+  // Mixed panel configuration support
+  mixedPanelMode: boolean;
+  stringConfigurations: StringConfiguration[];
 }
 
 export default function SystemDesignPage() {
   const { presets: panels, loading: panelsLoading } = usePanelPresets();
   const { inverters, loading: invertersLoading } = useInverterPresets();
-  
-  const [systemConfig, setSystemConfig] = useState<SystemDesignState>({
+    const [systemConfig, setSystemConfig] = useState<SystemDesignState>({
     selectedPanel: null,
     selectedInverter: null,
     numPanels: 20,
     numInverters: 1,
     seriesConfig: 10,
     parallelConfig: 2,
-    systemEfficiency: 85
+    systemEfficiency: 85,
+    mixedPanelMode: false,
+    stringConfigurations: []
   });
 
-  const [activeTab, setActiveTab] = useState('design');
-  // Calculate comprehensive system configuration and compatibility
+  const [activeTab, setActiveTab] = useState('design');  // Calculate comprehensive system configuration and compatibility
   const systemAnalysis = useMemo(() => {
-    if (!systemConfig.selectedPanel || !systemConfig.selectedInverter) {
+    if (!systemConfig.selectedInverter) {
       return null;
     }
 
-    const panel = systemConfig.selectedPanel;
     const inverter = systemConfig.selectedInverter;
+    
+    // Handle mixed panel configurations
+    if (systemConfig.mixedPanelMode && systemConfig.stringConfigurations.length > 0) {
+      const mixedConfig: MixedSystemConfiguration = {
+        strings: systemConfig.stringConfigurations,
+        numInverters: systemConfig.numInverters,
+        systemEfficiency: systemConfig.systemEfficiency
+      };
+      
+      const systemCalc = calculateMixedPanelSystem(inverter, mixedConfig);
+      const compatibility = validateSystemCompatibility(
+        systemConfig.stringConfigurations[0]?.panelPreset || systemConfig.selectedPanel!,
+        inverter,
+        systemCalc
+      );
+
+      return {
+        ...systemCalc,
+        isCompatible: compatibility.isCompatible,
+        issues: compatibility.issues,
+        warnings: [...compatibility.warnings, ...systemCalc.mixedPanelWarnings],
+        recommendations: compatibility.recommendations,
+        compatibilityScore: compatibility.compatibilityScore,
+        // Legacy fields for backward compatibility
+        totalInverterCapacity: systemConfig.numInverters * inverter.ratedPower,
+        powerPerInverter: systemCalc.totalSystemPower / systemConfig.numInverters,
+        voltageCompatible: systemCalc.totalSystemVoltage >= inverter.mpptVoltageRange.min && 
+                         systemCalc.totalSystemVoltage <= inverter.mpptVoltageRange.max,
+        currentCompatible: systemCalc.perInverterBreakdown.every(inv => inv.current <= inverter.maxSolarCurrent),
+        powerCompatible: systemCalc.perInverterBreakdown.every(inv => inv.power <= inverter.maxPvPower),
+        vocSafety: systemCalc.totalSystemVoc <= inverter.maxSolarVoltage
+      };
+    }
+    
+    // Handle uniform panel configurations
+    if (!systemConfig.selectedPanel) {
+      return null;    }
+
+    const panel = systemConfig.selectedPanel;
     
     // Use enhanced calculations
     const systemCalc = calculateSystemParameters(
@@ -344,7 +389,142 @@ export default function SystemDesignPage() {
                         systemEfficiency: parseInt(e.target.value) || 85
                       }))}
                     />
+                  </div>                </div>
+
+                {/* Mixed Panel Mode Toggle */}
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <Label htmlFor="mixed-panel-mode" className="text-base font-medium">Mixed Panel Configuration</Label>
+                      <p className="text-sm text-gray-600">Configure different panel types per string</p>
+                    </div>                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="mixed-panel-mode"
+                        checked={systemConfig.mixedPanelMode}
+                        onCheckedChange={(checked) => setSystemConfig(prev => ({
+                          ...prev,
+                          mixedPanelMode: checked,
+                          stringConfigurations: checked ? 
+                            // Initialize with default configurations
+                            Array.from({ length: prev.parallelConfig * prev.numInverters }, (_, i) => ({
+                              stringId: i + 1,
+                              inverterId: Math.floor(i / prev.parallelConfig) + 1,
+                              panelPreset: prev.selectedPanel!,
+                              panelCount: prev.seriesConfig
+                            })).filter(config => config.panelPreset) : []
+                        }))}
+                      />
+                      <Label htmlFor="mixed-panel-mode">Enable</Label>
+                    </div>
                   </div>
+
+                  {/* Mixed Panel String Configuration */}
+                  {systemConfig.mixedPanelMode && (
+                    <div className="space-y-4">
+                      <div className="grid gap-4">
+                        {Array.from({ length: systemConfig.parallelConfig * systemConfig.numInverters }).map((_, stringIndex) => {
+                          const stringId = stringIndex + 1;
+                          const inverterId = Math.floor(stringIndex / systemConfig.parallelConfig) + 1;
+                          const existingConfig = systemConfig.stringConfigurations.find(s => s.stringId === stringId);
+                          
+                          return (
+                            <div key={stringId} className="bg-gray-50 p-4 rounded-lg border">
+                              <div className="flex items-center gap-4">
+                                <div className="min-w-0 flex-1">
+                                  <Label className="text-sm font-medium text-gray-700">
+                                    String {stringId} (Inverter {inverterId})
+                                  </Label>
+                                </div>
+                                <div className="flex-1">
+                                  <Select
+                                    value={existingConfig?.panelPreset.id || ''}
+                                    onValueChange={(panelId) => {
+                                      const panel = panels.find(p => p.id === panelId);
+                                      if (panel) {
+                                        setSystemConfig(prev => ({
+                                          ...prev,
+                                          stringConfigurations: [
+                                            ...prev.stringConfigurations.filter(s => s.stringId !== stringId),
+                                            {
+                                              stringId,
+                                              inverterId,
+                                              panelPreset: panel,
+                                              panelCount: existingConfig?.panelCount || prev.seriesConfig
+                                            }
+                                          ]
+                                        }));
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger className="w-full">
+                                      <SelectValue placeholder="Select panel..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {panels.map((panel: PanelPreset) => (
+                                        <SelectItem key={panel.id} value={panel.id}>
+                                          <div className="flex items-center justify-between w-full">
+                                            <span className="text-sm">{panel.name}</span>
+                                            <Badge variant="outline" className="ml-2 text-xs">
+                                              {panel.power}W
+                                            </Badge>
+                                          </div>
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="w-24">
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    max="30"
+                                    placeholder="Panels"
+                                    value={existingConfig?.panelCount || systemConfig.seriesConfig}
+                                    onChange={(e) => {
+                                      const panelCount = parseInt(e.target.value) || 1;
+                                      setSystemConfig(prev => ({
+                                        ...prev,
+                                        stringConfigurations: prev.stringConfigurations.map(s => 
+                                          s.stringId === stringId ? { ...s, panelCount } : s
+                                        )
+                                      }));
+                                    }}
+                                    className="text-sm"
+                                  />
+                                </div>
+                              </div>
+                              {existingConfig && (
+                                <div className="mt-2 grid grid-cols-4 gap-2 text-xs text-gray-600">
+                                  <div>V: {(existingConfig.panelPreset.voltage * existingConfig.panelCount).toFixed(1)}V</div>
+                                  <div>I: {existingConfig.panelPreset.current.toFixed(1)}A</div>
+                                  <div>P: {((existingConfig.panelPreset.power * existingConfig.panelCount) / 1000).toFixed(1)}kW</div>
+                                  <div>VOC: {(existingConfig.panelPreset.voc * existingConfig.panelCount).toFixed(1)}V</div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {systemConfig.stringConfigurations.length > 0 && (
+                        <div className="bg-blue-50 p-3 rounded-lg">
+                          <h4 className="text-sm font-medium text-blue-900 mb-2">Mixed Configuration Summary</h4>
+                          <div className="text-xs text-blue-800 space-y-1">
+                            <div>Total Strings: {systemConfig.stringConfigurations.length}</div>
+                            <div>
+                              Total Power: {(systemConfig.stringConfigurations.reduce((sum, s) => 
+                                sum + (s.panelPreset.power * s.panelCount), 0) / 1000).toFixed(1)}kW
+                            </div>
+                            <div>
+                              Voltage Range: {Math.min(...systemConfig.stringConfigurations.map(s => 
+                                s.panelPreset.voltage * s.panelCount)).toFixed(1)}V - {Math.max(...systemConfig.stringConfigurations.map(s => 
+                                s.panelPreset.voltage * s.panelCount)).toFixed(1)}V
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-2 mb-4">
@@ -671,8 +851,71 @@ export default function SystemDesignPage() {
                         </div>
                       ))}
                     </div>
-                  </CardContent>
-                </Card>
+                  </CardContent>                </Card>
+
+                {/* Per-String Breakdown for Mixed Configurations */}
+                {systemConfig.mixedPanelMode && systemAnalysis && systemAnalysis.perStringBreakdown && systemAnalysis.perStringBreakdown.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Per-String Analysis (Mixed Panels)</CardTitle>
+                      <CardDescription>Individual string performance and voltage mismatch effects</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {systemAnalysis.perStringBreakdown.map((stringData, index) => (
+                          <div key={index} className="bg-gray-50 p-4 rounded-lg border">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-medium text-gray-900">String {stringData.stringId}</h4>
+                              <div className="text-xs text-gray-600">Inverter {stringData.inverterId}</div>
+                            </div>
+                            
+                            <div className="space-y-2 text-sm">
+                              <div className="font-medium text-blue-800">{stringData.panelType.name}</div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <span className="text-gray-600">Panels:</span>
+                                  <div className="font-medium">{stringData.panelCount}</div>
+                                </div>
+                                <div>
+                                  <span className="text-gray-600">Voltage:</span>
+                                  <div className="font-medium">{stringData.voltage.toFixed(1)}V</div>
+                                </div>
+                                <div>
+                                  <span className="text-gray-600">Current:</span>
+                                  <div className="font-medium">{stringData.current.toFixed(1)}A</div>
+                                </div>
+                                <div>
+                                  <span className="text-gray-600">Power:</span>
+                                  <div className="font-medium">{(stringData.power/1000).toFixed(1)}kW</div>
+                                </div>
+                              </div>
+                              
+                              {stringData.powerLossFromMismatch > 0 && (
+                                <div className="mt-2 p-2 bg-yellow-50 rounded border border-yellow-200">
+                                  <div className="text-yellow-800 font-medium text-xs">Voltage Mismatch Impact</div>
+                                  <div className="text-yellow-700 text-xs">
+                                    Power Loss: {(stringData.powerLossFromMismatch/1000).toFixed(1)}kW ({stringData.efficiencyImpact.toFixed(1)}%)
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {systemAnalysis.mixedPanelWarnings && systemAnalysis.mixedPanelWarnings.length > 0 && (
+                        <div className="mt-4 space-y-2">
+                          <h4 className="font-medium text-orange-900">Mixed Panel Warnings</h4>
+                          {systemAnalysis.mixedPanelWarnings.map((warning, index) => (
+                            <div key={index} className="bg-orange-50 border border-orange-200 p-3 rounded text-sm text-orange-800">
+                              {warning}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Safety Margins */}
                 <Card>
@@ -729,45 +972,42 @@ export default function SystemDesignPage() {
                       </div>
                     </div>
                   </CardContent>
-                </Card>
-
-                {/* Real-World Performance */}
+                </Card>                {/* Real-World Performance - Placeholder */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                         <TrendingUp className="w-4 h-4 text-green-600" />
                       </div>
-                      Real-World Performance
+                      System Performance
                     </CardTitle>
-                    <CardDescription>Expected system performance under real conditions</CardDescription>
+                    <CardDescription>Basic system performance metrics</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <div className="bg-green-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-green-900 mb-2">Energy Production</h4>
+                        <h4 className="font-medium text-green-900 mb-2">Power Output</h4>
                         <div className="space-y-2">
                           <div>
-                            <span className="text-sm text-green-700">Daily:</span>
-                            <div className="text-xl font-bold text-green-800">{systemAnalysis.realWorldPerformance.dailyEnergyProduction.toFixed(1)} kWh</div>
+                            <span className="text-sm text-green-700">Nominal Power:</span>
+                            <div className="text-xl font-bold text-green-800">{(systemAnalysis.realWorldPerformance.nominalPower/1000).toFixed(1)} kW</div>
                           </div>
                           <div>
-                            <span className="text-sm text-green-700">Annual:</span>
-                            <div className="text-lg font-medium text-green-700">{systemAnalysis.realWorldPerformance.annualEnergyProduction.toFixed(0)} kWh</div>
+                            <span className="text-sm text-green-700">Derated Power:</span>
+                            <div className="text-lg font-medium text-green-700">{(systemAnalysis.realWorldPerformance.deratedPower/1000).toFixed(1)} kW</div>
                           </div>
                         </div>
-                      </div>
-                      
+                      </div>                      
                       <div className="bg-blue-50 p-4 rounded-lg">
                         <h4 className="font-medium text-blue-900 mb-2">System Efficiency</h4>
                         <div className="space-y-2">
                           <div>
-                            <span className="text-sm text-blue-700">Capacity Factor:</span>
-                            <div className="text-xl font-bold text-blue-800">{systemAnalysis.realWorldPerformance.capacityFactor.toFixed(1)}%</div>
+                            <span className="text-sm text-blue-700">Overall Derating:</span>
+                            <div className="text-xl font-bold text-blue-800">{(systemAnalysis.derating.totalDerating * 100).toFixed(1)}%</div>
                           </div>
                           <div>
-                            <span className="text-sm text-blue-700">Derating:</span>
-                            <div className="text-lg font-medium text-blue-700">{(systemAnalysis.derating.totalDerating * 100).toFixed(1)}%</div>
+                            <span className="text-sm text-blue-700">MPPT Efficiency:</span>
+                            <div className="text-lg font-medium text-blue-700">{systemAnalysis.utilizationFactors.mpptEfficiency.toFixed(1)}%</div>
                           </div>
                         </div>
                       </div>
@@ -776,12 +1016,12 @@ export default function SystemDesignPage() {
                         <h4 className="font-medium text-purple-900 mb-2">Utilization</h4>
                         <div className="space-y-2">
                           <div>
-                            <span className="text-sm text-purple-700">MPPT Efficiency:</span>
-                            <div className="text-xl font-bold text-purple-800">{systemAnalysis.utilizationFactors.mpptEfficiency.toFixed(1)}%</div>
+                            <span className="text-sm text-purple-700">Power Utilization:</span>
+                            <div className="text-xl font-bold text-purple-800">{systemAnalysis.utilizationFactors.power.toFixed(1)}%</div>
                           </div>
                           <div>
-                            <span className="text-sm text-purple-700">Power Utilization:</span>
-                            <div className="text-lg font-medium text-purple-700">{systemAnalysis.utilizationFactors.power.toFixed(1)}%</div>
+                            <span className="text-sm text-purple-700">Voltage Utilization:</span>
+                            <div className="text-lg font-medium text-purple-700">{systemAnalysis.utilizationFactors.voltage.toFixed(1)}%</div>
                           </div>
                         </div>
                       </div>

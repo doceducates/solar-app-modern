@@ -28,10 +28,39 @@ export interface SystemCalculationResults {
   stringVoc: number;
   stringIsc: number;
   perInverterBreakdown: InverterBreakdown[];
+  perStringBreakdown: StringBreakdown[];
   safetyMargins: SafetyMargins;
   utilizationFactors: UtilizationFactors;
   derating: DeratingFactors;
   realWorldPerformance: RealWorldPerformance;
+  mixedPanelWarnings: string[];
+}
+
+export interface StringBreakdown {
+  stringId: number;
+  inverterId: number;
+  panelType: PanelPreset;
+  panelCount: number;
+  voltage: number;
+  current: number;
+  power: number;
+  voc: number;
+  isc: number;
+  powerLossFromMismatch: number; // Power lost due to voltage mismatch
+  efficiencyImpact: number; // % efficiency impact
+}
+
+export interface StringConfiguration {
+  stringId: number;
+  inverterId: number;
+  panelPreset: PanelPreset;
+  panelCount: number;
+}
+
+export interface MixedSystemConfiguration {
+  strings: StringConfiguration[];
+  numInverters: number;
+  systemEfficiency: number;
 }
 
 export interface InverterBreakdown {
@@ -534,7 +563,6 @@ export function calculateSystemParameters(
     dailyEnergyProduction: 0, // TODO: Calculate based on peak sun hours
     capacityFactor: 20 // TODO: Calculate based on environmental conditions
   };
-
   return {
     totalSystemVoltage,
     totalSystemCurrent,
@@ -549,10 +577,12 @@ export function calculateSystemParameters(
     stringVoc,
     stringIsc,
     perInverterBreakdown,
+    perStringBreakdown: [], // Empty for uniform panel systems
     safetyMargins,
     utilizationFactors,
     derating: deratingFactors,
-    realWorldPerformance
+    realWorldPerformance,
+    mixedPanelWarnings: [] // No warnings for uniform systems
   };
 }
 
@@ -712,5 +742,224 @@ export function validateSystemCompatibility(
     warnings,
     recommendations,
     compatibilityScore: Math.max(0, compatibilityScore)
+  };
+}
+
+/**
+ * Calculate mixed panel system parameters with voltage mismatch analysis
+ */
+export function calculateMixedPanelSystem(
+  inverter: InverterPreset,
+  systemConfig: MixedSystemConfiguration,
+  environmentalConditions: {
+    temperature: number;
+    irradiance: number;
+    shadingFactor: number;
+  } = { temperature: 25, irradiance: 1000, shadingFactor: 1 }
+): SystemCalculationResults {
+  
+  // Calculate derating factors
+  const deratingFactors = calculateDeratingFactors(
+    environmentalConditions.temperature,
+    environmentalConditions.shadingFactor,
+    systemConfig.systemEfficiency
+  );
+
+  // Calculate per-string breakdown
+  const perStringBreakdown: StringBreakdown[] = [];
+  const mixedPanelWarnings: string[] = [];
+  
+  // Group strings by inverter
+  const stringsByInverter = new Map<number, StringConfiguration[]>();
+  
+  systemConfig.strings.forEach(string => {
+    if (!stringsByInverter.has(string.inverterId)) {
+      stringsByInverter.set(string.inverterId, []);
+    }
+    stringsByInverter.get(string.inverterId)!.push(string);
+  });
+
+  // Calculate each string's characteristics
+  systemConfig.strings.forEach(string => {
+    const panel = string.panelPreset;
+    const stringVoltage = panel.voltage * string.panelCount;
+    const stringCurrent = panel.current;
+    const stringPower = panel.power * string.panelCount;
+    const stringVoc = panel.voc * string.panelCount;
+    const stringIsc = panel.isc;
+
+    perStringBreakdown.push({
+      stringId: string.stringId,
+      inverterId: string.inverterId,
+      panelType: panel,
+      panelCount: string.panelCount,
+      voltage: stringVoltage,
+      current: stringCurrent,
+      power: stringPower,
+      voc: stringVoc,
+      isc: stringIsc,
+      powerLossFromMismatch: 0, // Will be calculated later
+      efficiencyImpact: 0 // Will be calculated later
+    });
+  });
+
+  // Calculate voltage mismatch effects per inverter
+  stringsByInverter.forEach((strings, inverterId) => {
+    if (strings.length > 1) {
+      // Find minimum voltage string (MPPT operating point)
+      const voltages = strings.map(s => {
+        const stringData = perStringBreakdown.find(sb => sb.stringId === s.stringId);
+        return stringData ? stringData.voltage : 0;
+      });
+      
+      const minVoltage = Math.min(...voltages);
+      const maxVoltage = Math.max(...voltages);
+      
+      if (maxVoltage - minVoltage > 10) { // More than 10V difference
+        mixedPanelWarnings.push(
+          `Inverter ${inverterId}: Voltage mismatch detected (${minVoltage.toFixed(1)}V - ${maxVoltage.toFixed(1)}V). System will operate at ${minVoltage.toFixed(1)}V.`
+        );
+      }
+
+      // Calculate power losses for each string
+      strings.forEach(string => {
+        const stringData = perStringBreakdown.find(sb => sb.stringId === string.stringId);
+        if (stringData && stringData.voltage > minVoltage) {
+          // Power loss calculation: higher voltage strings lose power when forced to lower voltage
+          const voltageLossRatio = (stringData.voltage - minVoltage) / stringData.voltage;
+          stringData.powerLossFromMismatch = stringData.power * voltageLossRatio;
+          stringData.efficiencyImpact = voltageLossRatio * 100;
+          
+          // Update actual operating power
+          stringData.power = stringData.power - stringData.powerLossFromMismatch;
+        }
+      });
+    }
+  });
+
+  // Calculate system totals
+  let totalSystemPower = 0;
+  let totalSystemCurrent = 0;
+  let totalSystemVoc = 0;
+  let totalSystemIsc = 0;  // Group by inverter to get proper totals
+  stringsByInverter.forEach((strings) => {
+    strings.forEach(string => {
+      const stringData = perStringBreakdown.find(sb => sb.stringId === string.stringId);
+      if (stringData) {
+        totalSystemPower += stringData.power;
+        totalSystemCurrent += stringData.current;
+        totalSystemIsc += stringData.isc;
+      }
+    });
+    
+    // VOC is maximum across all strings
+    const inverterVocs = strings.map(s => {
+      const stringData = perStringBreakdown.find(sb => sb.stringId === s.stringId);
+      return stringData ? stringData.voc : 0;
+    });
+    totalSystemVoc = Math.max(totalSystemVoc, Math.max(...inverterVocs));
+  });
+
+  // Apply derating
+  const deratedSystemPower = totalSystemPower * deratingFactors.totalDerating;
+  
+  // Calculate system voltage (minimum across all strings for parallel connection)
+  const allVoltages = perStringBreakdown.map(s => s.voltage);
+  const totalSystemVoltage = Math.min(...allVoltages);
+
+  // Per-inverter breakdown for mixed systems
+  const perInverterBreakdown: InverterBreakdown[] = [];
+  
+  stringsByInverter.forEach((strings, inverterId) => {
+    let inverterPower = 0;
+    let inverterCurrent = 0;
+    let inverterVoc = 0;
+    let inverterIsc = 0;
+    
+    const inverterVoltages = strings.map(s => {
+      const stringData = perStringBreakdown.find(sb => sb.stringId === s.stringId);
+      return stringData ? stringData.voltage : 0;
+    });
+    const inverterVoltage = Math.min(...inverterVoltages);
+    
+    strings.forEach(string => {
+      const stringData = perStringBreakdown.find(sb => sb.stringId === string.stringId);
+      if (stringData) {
+        inverterPower += stringData.power;
+        inverterCurrent += stringData.current;
+        inverterIsc += stringData.isc;
+        inverterVoc = Math.max(inverterVoc, stringData.voc);
+      }
+    });
+    
+    const deratedInverterPower = inverterPower * deratingFactors.totalDerating;
+    const utilizationPercent = (deratedInverterPower / inverter.ratedPower) * 100;
+    
+    perInverterBreakdown.push({
+      inverterId,
+      voltage: inverterVoltage,
+      current: inverterCurrent,
+      power: deratedInverterPower,
+      voc: inverterVoc,
+      isc: inverterIsc,
+      stringCount: strings.length,
+      utilizationPercent
+    });
+  });
+
+  // Safety margins (use worst case from all strings)
+  const worstCaseVoc = Math.max(...perStringBreakdown.map(s => s.voc));
+  const maxCurrentPerInverter = Math.max(...perInverterBreakdown.map(i => i.current));
+  const maxPowerPerInverter = Math.max(...perInverterBreakdown.map(i => i.power));
+  
+  const safetyMargins: SafetyMargins = {
+    voltageMargin: ((inverter.maxSolarVoltage - worstCaseVoc) / inverter.maxSolarVoltage) * 100,
+    currentMargin: ((inverter.maxSolarCurrent - maxCurrentPerInverter) / inverter.maxSolarCurrent) * 100,
+    powerMargin: ((inverter.maxPvPower - maxPowerPerInverter) / inverter.maxPvPower) * 100,
+    vocMargin: ((inverter.maxSolarVoltage - worstCaseVoc) / inverter.maxSolarVoltage) * 100,
+    temperatureMargin: 15
+  };
+
+  // Utilization factors
+  const utilizationFactors: UtilizationFactors = {
+    voltage: (totalSystemVoltage / inverter.mpptVoltageRange.max) * 100,
+    current: (maxCurrentPerInverter / inverter.maxSolarCurrent) * 100,
+    power: (maxPowerPerInverter / inverter.maxPvPower) * 100,
+    mpptEfficiency: calculateMpptEfficiency(totalSystemVoltage, inverter)
+  };
+
+  // Real-world performance (simplified for mixed systems)
+  const realWorldPerformance: RealWorldPerformance = {
+    nominalPower: totalSystemPower,
+    deratedPower: deratedSystemPower,
+    annualEnergyProduction: 0, // TODO: Calculate based on location
+    dailyEnergyProduction: 0, // TODO: Calculate based on peak sun hours
+    capacityFactor: 20 // TODO: Calculate based on environmental conditions
+  };
+
+  // Calculate average values for legacy compatibility
+  const avgPanelsPerString = systemConfig.strings.reduce((sum, s) => sum + s.panelCount, 0) / systemConfig.strings.length;
+  const stringsPerInverter = systemConfig.strings.length / systemConfig.numInverters;
+
+  return {
+    totalSystemVoltage,
+    totalSystemCurrent,
+    totalSystemPower: deratedSystemPower,
+    totalSystemVoc,
+    totalSystemIsc,
+    stringsPerInverter,
+    panelsPerString: avgPanelsPerString,
+    stringVoltage: totalSystemVoltage, // Average for compatibility
+    stringCurrent: totalSystemCurrent / systemConfig.strings.length, // Average
+    stringPower: deratedSystemPower / systemConfig.strings.length, // Average
+    stringVoc: totalSystemVoc,
+    stringIsc: totalSystemIsc / systemConfig.strings.length, // Average
+    perInverterBreakdown,
+    perStringBreakdown,
+    safetyMargins,
+    utilizationFactors,
+    derating: deratingFactors,
+    realWorldPerformance,
+    mixedPanelWarnings
   };
 }
