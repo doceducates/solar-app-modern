@@ -18,13 +18,14 @@ export function MainLayout({ children, className }: MainLayoutProps) {
   const closeSidebar = () => setIsSidebarOpen(false);
 
   return (
-    <div className={cn("min-h-screen bg-background", className)}>
-      <Header 
+    <div className={cn("min-h-screen bg-background", className)}>      <Header 
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={toggleSidebar}
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
       />
       
-      <div className="flex h-[calc(100vh-4rem)]">
+      <div className="flex h-[calc(100vh-5rem)]">
         <Sidebar
           isOpen={isSidebarOpen}
           onClose={closeSidebar}

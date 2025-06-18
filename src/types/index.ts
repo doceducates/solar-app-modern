@@ -314,7 +314,7 @@ export interface MixedSystemConfiguration {
 
 // Enhanced system analysis result type
 export interface SystemAnalysisResult {
-  mode: 'uniform' | 'mixed';
+  mode: 'uniform' | 'mixed' | 'custom';
   isCompatible: boolean;
   compatibilityScore: number;
   issues: string[];

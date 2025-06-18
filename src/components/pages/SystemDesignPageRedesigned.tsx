@@ -39,7 +39,7 @@ interface SystemDesignState {
   systemEfficiency: number;
   
   // Configuration mode
-  configurationMode: 'uniform' | 'mixed';
+  configurationMode: 'uniform' | 'mixed' | 'custom';
   
   // Uniform configuration
   uniformConfig: {
@@ -52,13 +52,26 @@ interface SystemDesignState {
   mixedConfig: {
     stringConfigurations: StringConfiguration[];
   };
+  
+  // Custom panel configuration
+  customPanel: {
+    name: string;
+    voltage: number;
+    current: number;
+    power: number;
+    voc: number;
+    isc: number;
+    maxSeriesFuse: number;
+    maxSystemVoltage: number;
+    efficiency: number;
+    temperatureCoefficient: number;
+  };
 }
 
 export default function SystemDesignPageRedesigned() {
   const { presets: panels, loading: panelsLoading } = usePanelPresets();
   const { inverters, loading: invertersLoading } = useInverterPresets();
-  
-  const [systemConfig, setSystemConfig] = useState<SystemDesignState>({
+    const [systemConfig, setSystemConfig] = useState<SystemDesignState>({
     selectedInverter: null,
     numInverters: 1,
     systemEfficiency: 85,
@@ -70,6 +83,18 @@ export default function SystemDesignPageRedesigned() {
     },
     mixedConfig: {
       stringConfigurations: []
+    },
+    customPanel: {
+      name: 'Custom Panel',
+      voltage: 40.3,
+      current: 14.91,
+      power: 600,
+      voc: 48.4,
+      isc: 15.8,
+      maxSeriesFuse: 20,
+      maxSystemVoltage: 1000,
+      efficiency: 22.5,
+      temperatureCoefficient: -0.35
     }
   });
 
@@ -79,7 +104,6 @@ export default function SystemDesignPageRedesigned() {
   const totalStringsNeeded = useMemo(() => {
     return systemConfig.uniformConfig.parallelConfig * systemConfig.numInverters;
   }, [systemConfig.uniformConfig.parallelConfig, systemConfig.numInverters]);
-
   // System analysis with proper separation of concerns
   const systemAnalysis = useMemo(() => {
     if (!systemConfig.selectedInverter) return null;
@@ -108,6 +132,41 @@ export default function SystemDesignPageRedesigned() {
           ...systemCalc,
           ...compatibility,
           mode: 'mixed' as const,
+          totalInverterCapacity: systemConfig.numInverters * inverter.ratedPower
+        };
+      } else if (systemConfig.configurationMode === 'custom') {
+        // Custom panel system - treat as uniform with custom panel
+        const customPanelPreset: PanelPreset = {
+          id: 'custom-panel',
+          name: systemConfig.customPanel.name,
+          description: 'Custom panel configuration',
+          category: 'residential',
+          voltage: systemConfig.customPanel.voltage,
+          current: systemConfig.customPanel.current,
+          power: systemConfig.customPanel.power,
+          voc: systemConfig.customPanel.voc,
+          isc: systemConfig.customPanel.isc,
+          maxSeriesFuse: systemConfig.customPanel.maxSeriesFuse,
+          maxSystemVoltage: systemConfig.customPanel.maxSystemVoltage,
+          efficiency: systemConfig.customPanel.efficiency,
+          temperatureCoefficient: systemConfig.customPanel.temperatureCoefficient
+        };
+
+        const systemCalc = calculateSystemParameters(
+          customPanelPreset,
+          inverter,
+          systemConfig.uniformConfig.seriesConfig,
+          systemConfig.uniformConfig.parallelConfig,
+          systemConfig.numInverters,
+          systemConfig.systemEfficiency
+        );
+
+        const compatibility = validateSystemCompatibility(customPanelPreset, inverter, systemCalc);
+
+        return {
+          ...systemCalc,
+          ...compatibility,
+          mode: 'custom' as const,
           totalInverterCapacity: systemConfig.numInverters * inverter.ratedPower
         };
       } else {
@@ -152,8 +211,7 @@ export default function SystemDesignPageRedesigned() {
       uniformConfig: { ...prev.uniformConfig, selectedPanel: panel || null }
     }));
   };
-
-  const handleConfigurationModeChange = (mode: 'uniform' | 'mixed') => {
+  const handleConfigurationModeChange = (mode: 'uniform' | 'mixed' | 'custom') => {
     setSystemConfig(prev => {
       const newConfig = { ...prev, configurationMode: mode };
       
@@ -170,12 +228,66 @@ export default function SystemDesignPageRedesigned() {
         );
       }
       
+      // Initialize mixed configuration with custom panel if switching to custom mode
+      if (mode === 'custom') {
+        const customPanelPreset: PanelPreset = {
+          id: 'custom-panel',
+          name: prev.customPanel.name,
+          description: 'Custom panel configuration',
+          category: 'residential',
+          voltage: prev.customPanel.voltage,
+          current: prev.customPanel.current,
+          power: prev.customPanel.power,
+          voc: prev.customPanel.voc,
+          isc: prev.customPanel.isc,
+          maxSeriesFuse: prev.customPanel.maxSeriesFuse,
+          maxSystemVoltage: prev.customPanel.maxSystemVoltage,
+          efficiency: prev.customPanel.efficiency,
+          temperatureCoefficient: prev.customPanel.temperatureCoefficient
+        };
+        
+        newConfig.mixedConfig.stringConfigurations = Array.from(
+          { length: totalStringsNeeded },
+          (_, i) => ({
+            stringId: i + 1,
+            inverterId: Math.floor(i / prev.uniformConfig.parallelConfig) + 1,
+            panelPreset: customPanelPreset,
+            panelCount: prev.uniformConfig.seriesConfig
+          })
+        );
+      }
+      
       return newConfig;
     });
   };
-
   const addStringConfiguration = () => {
-    if (!systemConfig.uniformConfig.selectedPanel) return;
+    let defaultPanel: PanelPreset | null = null;
+    
+    if (systemConfig.configurationMode === 'custom') {
+      // Create custom panel preset
+      defaultPanel = {
+        id: 'custom-panel',
+        name: systemConfig.customPanel.name,
+        description: 'Custom panel configuration',
+        category: 'residential',
+        voltage: systemConfig.customPanel.voltage,
+        current: systemConfig.customPanel.current,
+        power: systemConfig.customPanel.power,
+        voc: systemConfig.customPanel.voc,
+        isc: systemConfig.customPanel.isc,
+        maxSeriesFuse: systemConfig.customPanel.maxSeriesFuse,
+        maxSystemVoltage: systemConfig.customPanel.maxSystemVoltage,
+        efficiency: systemConfig.customPanel.efficiency,
+        temperatureCoefficient: systemConfig.customPanel.temperatureCoefficient
+      };
+    } else if (systemConfig.uniformConfig.selectedPanel) {
+      defaultPanel = systemConfig.uniformConfig.selectedPanel;
+    } else {
+      // Use the first available panel as default
+      defaultPanel = panels[0] || null;
+    }
+    
+    if (!defaultPanel) return;
     
     const newStringId = systemConfig.mixedConfig.stringConfigurations.length + 1;
     const inverterId = Math.floor((newStringId - 1) / systemConfig.uniformConfig.parallelConfig) + 1;
@@ -188,7 +300,7 @@ export default function SystemDesignPageRedesigned() {
           {
             stringId: newStringId,
             inverterId,
-            panelPreset: prev.uniformConfig.selectedPanel!,
+            panelPreset: defaultPanel!,
             panelCount: prev.uniformConfig.seriesConfig
           }
         ]
@@ -298,9 +410,8 @@ export default function SystemDesignPageRedesigned() {
                 <CardDescription>
                   Choose between uniform panels or mixed panel configurations
                 </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center space-x-6">
+              </CardHeader>              <CardContent>
+                <div className="flex items-center space-x-6 flex-wrap">
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="uniform-mode"
@@ -332,22 +443,44 @@ export default function SystemDesignPageRedesigned() {
                       (Different panel types per string)
                     </span>
                   </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="custom-mode"
+                      checked={systemConfig.configurationMode === 'custom'}
+                      onCheckedChange={(checked) => 
+                        handleConfigurationModeChange(checked ? 'custom' : 'uniform')
+                      }
+                    />
+                    <Label htmlFor="custom-mode" className="font-medium">
+                      Custom Panel
+                    </Label>
+                    <span className="text-sm text-gray-600">
+                      (Enter your own panel specs)
+                    </span>
+                  </div>
                 </div>
                 
                 <div className={`mt-4 p-4 rounded-lg border-2 ${
                   systemConfig.configurationMode === 'mixed' 
                     ? 'bg-orange-50 border-orange-200' 
+                    : systemConfig.configurationMode === 'custom'
+                    ? 'bg-purple-50 border-purple-200'
                     : 'bg-blue-50 border-blue-200'
                 }`}>
                   <div className="flex items-center gap-2 mb-2">
                     <Info className="w-4 h-4" />
                     <span className="font-medium">
-                      {systemConfig.configurationMode === 'mixed' ? 'Mixed Panel Mode' : 'Uniform Panel Mode'}
+                      {systemConfig.configurationMode === 'mixed' ? 'Mixed Panel Mode' : 
+                       systemConfig.configurationMode === 'custom' ? 'Custom Panel Mode' : 
+                       'Uniform Panel Mode'}
                     </span>
                   </div>
                   <p className="text-sm">
                     {systemConfig.configurationMode === 'mixed'
                       ? 'Configure different panel types for each string. This allows for maximum flexibility but requires careful voltage matching.'
+                      : systemConfig.configurationMode === 'custom'
+                      ? 'Enter your own panel specifications. This mode allows you to use panels not in our database.'
                       : 'All strings use the same panel type and configuration. This is the most common and straightforward approach.'
                     }
                   </p>
@@ -512,9 +645,7 @@ export default function SystemDesignPageRedesigned() {
                   )}
                 </CardContent>
               </Card>
-            </div>
-
-            {/* Panel Configuration */}
+            </div>            {/* Panel Configuration */}
             {systemConfig.configurationMode === 'uniform' ? (
               <UniformPanelConfiguration
                 config={systemConfig.uniformConfig}
@@ -526,8 +657,21 @@ export default function SystemDesignPageRedesigned() {
                 }))}
                 totalStringsNeeded={totalStringsNeeded}
               />
-            ) : (
-              <MixedPanelConfiguration
+            ) : systemConfig.configurationMode === 'custom' ? (
+              <CustomPanelConfiguration
+                config={systemConfig.customPanel}
+                uniformConfig={systemConfig.uniformConfig}
+                onCustomPanelChange={(updates) => setSystemConfig(prev => ({
+                  ...prev,
+                  customPanel: { ...prev.customPanel, ...updates }
+                }))}
+                onConfigChange={(updates) => setSystemConfig(prev => ({
+                  ...prev,
+                  uniformConfig: { ...prev.uniformConfig, ...updates }
+                }))}
+                totalStringsNeeded={totalStringsNeeded}
+              />
+            ) : (              <MixedPanelConfiguration
                 config={systemConfig.mixedConfig}
                 uniformConfig={systemConfig.uniformConfig}
                 panels={panels}
@@ -687,6 +831,242 @@ function UniformPanelConfiguration({
   );
 }
 
+// Component for custom panel configuration
+interface CustomPanelConfigurationProps {
+  config: SystemDesignState['customPanel'];
+  uniformConfig: SystemDesignState['uniformConfig'];
+  onCustomPanelChange: (updates: Partial<SystemDesignState['customPanel']>) => void;
+  onConfigChange: (updates: Partial<SystemDesignState['uniformConfig']>) => void;
+  totalStringsNeeded: number;
+}
+
+function CustomPanelConfiguration({ 
+  config, 
+  uniformConfig,
+  onCustomPanelChange, 
+  onConfigChange,
+  totalStringsNeeded 
+}: CustomPanelConfigurationProps) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+            <Settings className="w-4 h-4 text-purple-600" />
+          </div>
+          Custom Panel Configuration
+        </CardTitle>
+        <CardDescription>
+          Enter your own panel specifications and configure the system
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Custom Panel Specifications */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div>
+            <Label htmlFor="custom-name">Panel Name</Label>
+            <Input
+              id="custom-name"
+              value={config.name}
+              onChange={(e) => onCustomPanelChange({ name: e.target.value })}
+              placeholder="e.g., Custom 600W Panel"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="custom-power">Power (W) *</Label>
+            <Input
+              id="custom-power"
+              type="number"
+              min="100"
+              max="800"
+              value={config.power}
+              onChange={(e) => onCustomPanelChange({ power: parseFloat(e.target.value) || 0 })}
+              placeholder="600"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="custom-voltage">Voltage - Vmp (V) *</Label>
+            <Input
+              id="custom-voltage"
+              type="number"
+              min="20"
+              max="60"
+              step="0.1"
+              value={config.voltage}
+              onChange={(e) => onCustomPanelChange({ voltage: parseFloat(e.target.value) || 0 })}
+              placeholder="40.3"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="custom-current">Current - Imp (A) *</Label>
+            <Input
+              id="custom-current"
+              type="number"
+              min="5"
+              max="25"
+              step="0.1"
+              value={config.current}
+              onChange={(e) => onCustomPanelChange({ current: parseFloat(e.target.value) || 0 })}
+              placeholder="14.91"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="custom-voc">Open Circuit Voltage - VOC (V) *</Label>
+            <Input
+              id="custom-voc"
+              type="number"
+              min="25"
+              max="70"
+              step="0.1"
+              value={config.voc}
+              onChange={(e) => onCustomPanelChange({ voc: parseFloat(e.target.value) || 0 })}
+              placeholder="48.4"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="custom-isc">Short Circuit Current - ISC (A) *</Label>
+            <Input
+              id="custom-isc"
+              type="number"
+              min="5"
+              max="30"
+              step="0.1"
+              value={config.isc}
+              onChange={(e) => onCustomPanelChange({ isc: parseFloat(e.target.value) || 0 })}
+              placeholder="15.8"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="custom-efficiency">Efficiency (%)</Label>
+            <Input
+              id="custom-efficiency"
+              type="number"
+              min="15"
+              max="25"
+              step="0.1"
+              value={config.efficiency}
+              onChange={(e) => onCustomPanelChange({ efficiency: parseFloat(e.target.value) || 0 })}
+              placeholder="22.5"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="custom-temp-coeff">Temp Coefficient (%/°C)</Label>
+            <Input
+              id="custom-temp-coeff"
+              type="number"
+              min="-0.6"
+              max="-0.2"
+              step="0.01"
+              value={config.temperatureCoefficient}
+              onChange={(e) => onCustomPanelChange({ temperatureCoefficient: parseFloat(e.target.value) || 0 })}
+              placeholder="-0.35"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="custom-max-fuse">Max Series Fuse (A)</Label>
+            <Input
+              id="custom-max-fuse"
+              type="number"
+              min="10"
+              max="50"
+              value={config.maxSeriesFuse}
+              onChange={(e) => onCustomPanelChange({ maxSeriesFuse: parseFloat(e.target.value) || 0 })}
+              placeholder="20"
+            />
+          </div>
+        </div>
+
+        {/* Configuration Section */}
+        <Separator />
+        
+        <div>
+          <h4 className="font-medium mb-3">System Configuration</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="custom-series-config">Panels per String</Label>
+              <Input
+                id="custom-series-config"
+                type="number"
+                min="1"
+                max="30"
+                value={uniformConfig.seriesConfig}
+                onChange={(e) => onConfigChange({ seriesConfig: parseInt(e.target.value) || 1 })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="custom-parallel-config">Strings per Inverter</Label>
+              <Input
+                id="custom-parallel-config"
+                type="number"
+                min="1"
+                max="20"
+                value={uniformConfig.parallelConfig}
+                onChange={(e) => onConfigChange({ parallelConfig: parseInt(e.target.value) || 1 })}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Custom Panel Preview */}
+        <div className="bg-purple-50 p-4 rounded-lg space-y-2">
+          <h4 className="font-medium text-purple-900">Custom Panel Preview</h4>
+          <div className="grid grid-cols-3 gap-2 text-sm text-purple-800">
+            <div>Power: {config.power}W</div>
+            <div>Voltage: {config.voltage}V</div>
+            <div>Current: {config.current}A</div>
+            <div>VOC: {config.voc}V</div>
+            <div>ISC: {config.isc}A</div>
+            <div>Efficiency: {config.efficiency}%</div>
+          </div>
+        </div>
+
+        {/* Configuration Summary */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h4 className="font-medium mb-2">Configuration Summary</h4>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600">Total Strings:</span>
+              <div className="font-bold text-lg">{totalStringsNeeded}</div>
+            </div>
+            <div>
+              <span className="text-gray-600">Total Panels:</span>
+              <div className="font-bold text-lg">{uniformConfig.seriesConfig * totalStringsNeeded}</div>
+            </div>
+            <div>
+              <span className="text-gray-600">Configuration:</span>
+              <div className="font-bold text-lg">{uniformConfig.seriesConfig}S × {uniformConfig.parallelConfig}P</div>
+            </div>
+            <div>
+              <span className="text-gray-600">Total Power:</span>
+              <div className="font-bold text-lg">
+                {((uniformConfig.seriesConfig * totalStringsNeeded * config.power) / 1000).toFixed(1)} kW
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+          <div className="flex items-center gap-2 mb-1">
+            <Info className="w-4 h-4 text-yellow-600" />
+            <span className="font-medium text-yellow-900">Custom Panel Mode</span>
+          </div>
+          <p className="text-sm text-yellow-800">
+            Make sure your custom panel specifications are accurate. Incorrect values may lead to system incompatibility or safety issues.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // Component for mixed panel configuration
 interface MixedPanelConfigurationProps {
   config: SystemDesignState['mixedConfig'];
@@ -701,7 +1081,6 @@ interface MixedPanelConfigurationProps {
 
 function MixedPanelConfiguration({ 
   config, 
-  uniformConfig,
   panels, 
   totalStringsNeeded,
   onAddString,
@@ -734,10 +1113,9 @@ function MixedPanelConfiguration({
         <div className="flex justify-between items-center">
           <p className="text-sm text-gray-600">
             Configure each string individually with different panel types
-          </p>
-          <Button 
+          </p>          <Button 
             onClick={onAddString} 
-            disabled={!canAddMore || !uniformConfig.selectedPanel}
+            disabled={!canAddMore}
             size="sm"
             className="flex items-center gap-2"
           >
@@ -1096,7 +1474,7 @@ function ValidationResults({ systemAnalysis }: { systemAnalysis: SystemAnalysisR
 // Calculation Results Component
 function CalculationResults({ systemAnalysis, configMode }: { 
   systemAnalysis: SystemAnalysisResult | null; 
-  configMode: 'uniform' | 'mixed';
+  configMode: 'uniform' | 'mixed' | 'custom';
 }) {
   if (!systemAnalysis) {
     return (
@@ -1187,11 +1565,10 @@ function CalculationResults({ systemAnalysis, configMode }: {
             <CardTitle className="text-lg text-orange-600">Configuration</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <div>
+            <div className="space-y-2">              <div>
                 <span className="text-sm text-gray-600">Mode:</span>
                 <div className="text-xl font-bold text-orange-700 capitalize">
-                  {configMode}
+                  {configMode === 'custom' ? 'Custom Panel' : configMode}
                 </div>
               </div>
               <div>
@@ -1254,10 +1631,8 @@ function CalculationResults({ systemAnalysis, configMode }: {
             ))}
           </div>
         </CardContent>
-      </Card>
-
-      {/* Per-String Breakdown for Mixed Configurations */}
-      {configMode === 'mixed' && systemAnalysis.perStringBreakdown && systemAnalysis.perStringBreakdown.length > 0 && (
+      </Card>      {/* Per-String Breakdown for Mixed Configurations */}
+      {(configMode === 'mixed' || configMode === 'custom') && systemAnalysis.perStringBreakdown && systemAnalysis.perStringBreakdown.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Per-String Analysis (Mixed Panels)</CardTitle>
