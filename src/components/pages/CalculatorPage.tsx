@@ -68,12 +68,11 @@ export function CalculatorPage() {
                 Location & Pricing
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <CountrySelector
+            <CardContent className="space-y-4">              <CountrySelector
                 selectedCountry={selectedCountry}
                 onCountryChange={updateCountryAndCosts}
               />
-              <Separator />
+              <div className="border-t border-border my-4" />
               {currentCountry && (
                 <CostInput
                   country={currentCountry}
