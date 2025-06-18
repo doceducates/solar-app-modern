@@ -2,6 +2,8 @@
 
 import { Zap, Battery, TrendingUp, Gauge, DollarSign, Target } from 'lucide-react';
 import { ConfigurationResults, PanelSpecifications, SystemConfiguration, ConfigurationType } from '@/types';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface ResultsDisplayProps {
