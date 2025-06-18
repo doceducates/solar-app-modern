@@ -2,7 +2,7 @@
 
 ## Overview
 
-The **Veyron II Premium-6000W-48V** is an MPPT-based solar inverter designed by **SolRex Energy**, featuring advanced power conversion capabilities for both solar and AC inputs. Manufactured in China and designed in Taiwan, this inverter supports a range of operating conditions and provides efficient energy management for residential or commercial solar systems.
+The **Veyron II Premium-6000W-48V** is an MPPT-based solar inverter designed by **Inverex Energy**, featuring advanced power conversion capabilities for both solar and AC inputs. Manufactured in China and designed in Taiwan, this inverter supports a range of operating conditions and provides efficient energy management for residential or commercial solar systems.
 
 ## General Specifications
 
@@ -75,6 +75,6 @@ The following table compiles all specified values from the inverter label, provi
 ## Notes
 
 - **Missing Information**: The label does not specify detailed efficiency ratings, battery type compatibility, or exact warranty terms. Refer to the full datasheet for additional details.
-- **Verification**: Confirm exact specifications and compatibility with SolRex Energy’s official documentation or support.
+- **Verification**: Confirm exact specifications and compatibility with Inverex Energy’s official documentation or support.
 
-For further details, consult the complete inverter manual or contact SolRex Energy.
+For further details, consult the complete inverter manual or contact Inverex Energy.
