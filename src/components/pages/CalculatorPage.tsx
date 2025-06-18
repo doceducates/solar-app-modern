@@ -12,13 +12,11 @@ import { calculateAllConfigurations, performAllSafetyChecks } from '@/lib/calcul
 import ConfigurationTabs from '@/components/ConfigurationTabs';
 import ResultsDisplay from '@/components/ResultsDisplay';
 import CustomPresetModal from '@/components/CustomPresetModal';
-import { useCountries, usePanelPresets, useCalculationHistory } from '@/hooks/useDatabase';
+import { useCountries, usePanelPresets } from '@/hooks/useDatabase';
 
-export function CalculatorPage() {
-  // Database hooks
+export function CalculatorPage() {  // Database hooks
   const { countries, getCountryById } = useCountries();
-  const { presets, addPreset, deletePreset, getPresetByName } = usePanelPresets();
-  const { saveCalculation } = useCalculationHistory();
+  const { presets, addPreset, deletePreset } = usePanelPresets();
   
   // Local state management - using database data
   const [selectedCountryId, setSelectedCountryId] = useState('pakistan');

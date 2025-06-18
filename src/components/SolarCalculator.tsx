@@ -16,7 +16,7 @@ import { CostAnalysisDisplay } from './CostAnalysisDisplay';
 import { CostInput } from './CostInput';
 
 export default function SolarCalculator() {
-  const [selectedCountry, setSelectedCountry] = useState<string>('pakistan');
+  const [selectedCountry] = useState<string>('pakistan');
   const [panelSpecs, setPanelSpecs] = useState<PanelSpecifications>(PANEL_PRESETS[0]);
   const [systemConfig, setSystemConfig] = useState<SystemConfiguration>({
     panels: 4,
@@ -27,8 +27,7 @@ export default function SolarCalculator() {
   const [activeTab, setActiveTab] = useState<'series' | 'parallel' | 'combined'>('series');
   const [safetyChecks, setSafetyChecks] = useState<SafetyChecks>({});
   const [costAnalysis, setCostAnalysis] = useState<CostAnalysis | null>(null);
-  
-  // Custom cost inputs state - initialized with default Pakistan values
+    // Custom cost inputs state - initialized with default Pakistan values
   const [customCosts, setCustomCosts] = useState(() => {
     const defaultCountry = getCountryById('pakistan');
     return {
@@ -37,10 +36,12 @@ export default function SolarCalculator() {
       electricityRate: defaultCountry?.pricing.electricityRate || 25,
       laborRate: defaultCountry?.pricing.laborRate || 800,
       installationHours: 40,
-      permitCost: defaultCountry?.pricing.permitCost || 15000
-    };
-  });  // Get current country data - memoized to prevent unnecessary re-renders
+      permitCost: defaultCountry?.pricing.permitCost || 15000    };
+  });
+  
+  // Get current country data - memoized to prevent unnecessary re-renders
   const currentCountry = useMemo(() => getCountryById(selectedCountry), [selectedCountry]);
+  
   // Memoized cost change handler to prevent infinite loops
   const handleCostChange = useCallback((newCosts: {
     panelCostPerWatt: number;
@@ -51,23 +52,6 @@ export default function SolarCalculator() {
     permitCost: number;
   }) => {
     setCustomCosts(newCosts);
-  }, []);  
-  // Handle country change and update costs accordingly
-  const handleCountryChange = useCallback((newCountryId: string) => {
-    setSelectedCountry(newCountryId);
-    
-    // Update costs when country changes
-    const newCountry = getCountryById(newCountryId);
-    if (newCountry) {
-      setCustomCosts(prevCosts => ({
-        panelCostPerWatt: newCountry.pricing.panelCostPerWatt,
-        installationCostPerWatt: newCountry.pricing.installationCostPerWatt,
-        electricityRate: newCountry.pricing.electricityRate,
-        laborRate: newCountry.pricing.laborRate,
-        installationHours: prevCosts.installationHours || 40, // Keep existing hours
-        permitCost: newCountry.pricing.permitCost
-      }));
-    }
   }, []);
 
   // Stable callbacks for panel and system configuration changes
@@ -77,7 +61,9 @@ export default function SolarCalculator() {
 
   const handleSystemConfigChange = useCallback((config: SystemConfiguration) => {
     setSystemConfig(config);
-  }, []);// Calculate basic results whenever panel specs or system config change
+  }, []);
+  
+  // Calculate basic results whenever panel specs or system config change
   useEffect(() => {
     if (panelSpecs.voltage > 0 && panelSpecs.current > 0 && systemConfig.panels > 0) {
       const newResults = calculateAllConfigurations(panelSpecs, systemConfig);

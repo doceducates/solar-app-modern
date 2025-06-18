@@ -297,3 +297,95 @@ export interface InverterValidationResult {
     power: number; // % of inverter capacity used
   };
 }
+
+// Enhanced types for mixed panel configurations
+export interface StringConfiguration {
+  stringId: number;
+  inverterId: number;
+  panelPreset: PanelPreset;
+  panelCount: number;
+}
+
+export interface MixedSystemConfiguration {
+  strings: StringConfiguration[];
+  numInverters: number;
+  systemEfficiency: number;
+}
+
+// Enhanced system analysis result type
+export interface SystemAnalysisResult {
+  mode: 'uniform' | 'mixed';
+  isCompatible: boolean;
+  compatibilityScore: number;
+  issues: string[];
+  warnings: string[];
+  recommendations: string[];
+  
+  // System totals
+  totalSystemVoltage: number;
+  totalSystemCurrent: number;
+  totalSystemPower: number;
+  totalSystemVoc: number;
+  totalSystemIsc: number;
+  totalInverterCapacity: number;
+  
+  // Breakdown data
+  perInverterBreakdown: {
+    inverterId: number;
+    voltage: number;
+    current: number;
+    power: number;
+    voc: number;
+    isc: number;
+    stringCount: number;
+    utilizationPercent: number;
+  }[];
+  
+  perStringBreakdown?: {
+    stringId: number;
+    inverterId: number;
+    panelType: PanelPreset;
+    panelCount: number;
+    voltage: number;
+    current: number;
+    power: number;
+    powerLossFromMismatch: number;
+    efficiencyImpact: number;
+  }[];
+  
+  // Safety and performance data
+  safetyMargins: {
+    voltageMargin: number;
+    currentMargin: number;
+    powerMargin: number;
+    vocMargin: number;
+    temperatureMargin: number;
+  };
+  
+  utilizationFactors: {
+    voltage: number;
+    current: number;
+    power: number;
+    mpptEfficiency: number;
+  };
+  
+  derating: {
+    temperature: number;
+    shading: number;
+    soiling: number;
+    mismatch: number;
+    connections: number;
+    inverterEfficiency: number;
+    totalDerating: number;
+  };
+  
+  realWorldPerformance: {
+    nominalPower: number;
+    deratedPower: number;
+    annualEnergyProduction: number;
+    dailyEnergyProduction: number;
+    capacityFactor: number;
+  };
+  
+  mixedPanelWarnings?: string[];
+}

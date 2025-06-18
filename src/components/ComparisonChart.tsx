@@ -4,8 +4,6 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { ConfigurationResults } from '@/types';
 import { useState } from 'react';
 import { BarChart3, TrendingUp, Target, Eye } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface ComparisonChartProps {
