@@ -13,14 +13,22 @@ interface PanelInputProps {
   systemConfig: SystemConfiguration;
   onPanelSpecsChange: (specs: PanelSpecifications) => void;
   onSystemConfigChange: (config: SystemConfiguration) => void;
+  selectedCountry?: string;
 }
 
 export default function PanelInput({
   panelSpecs,
   systemConfig,
   onPanelSpecsChange,
-  onSystemConfigChange
+  onSystemConfigChange,
+  selectedCountry
 }: PanelInputProps) {
+  // Filter panels by country availability
+  const availablePanels = selectedCountry 
+    ? PANEL_PRESETS.filter(panel => 
+        !panel.countryAvailability || panel.countryAvailability.includes(selectedCountry)
+      )
+    : PANEL_PRESETS;
   const handlePresetChange = (presetId: string) => {
     if (presetId === 'custom') {
       // Reset to default values for custom entry
@@ -34,7 +42,7 @@ export default function PanelInput({
         maxSystemVoltage: 0
       });
     } else {
-      const preset = PANEL_PRESETS.find(p => p.id === presetId);
+      const preset = availablePanels.find(p => p.id === presetId);
       if (preset) {
         onPanelSpecsChange(preset);
       }

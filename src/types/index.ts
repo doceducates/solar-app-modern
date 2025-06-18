@@ -19,6 +19,7 @@ export interface PanelPreset extends PanelSpecifications {
   manufacturer?: string;
   model?: string;
   category: 'residential' | 'commercial' | 'utility' | 'small';
+  countryAvailability?: string[]; // List of country IDs where this panel is available
 }
 
 export interface SystemConfiguration {
@@ -46,6 +47,49 @@ export interface SafetyCheck {
   message: string;
   field?: string;
   recommendation?: string;
+}
+
+// Country and pricing related types
+export interface CountryPricing {
+  id: string;
+  name: string;
+  currency: {
+    code: string;
+    symbol: string;
+    name: string;
+  };
+  pricing: {
+    panelCostPerWatt: number;
+    installationCostPerWatt: number;
+    electricityRate: number;
+    laborRate: number;
+    permitCost: number;
+  };
+  incentives?: {
+    name: string;
+    type: 'rebate' | 'tax_credit' | 'feed_in_tariff';
+    value: number;
+    description: string;
+  }[];
+  regulations: {
+    maxSystemVoltage: number;
+    requiresPermit: boolean;
+    gridTieAllowed: boolean;
+    netMeteringAvailable: boolean;
+  };
+}
+
+export interface CostAnalysis {
+  totalSystemCost: number;
+  costPerWatt: number;
+  installationCost: number;
+  panelCost: number;
+  laborCost: number;
+  permitCost: number;
+  annualSavings: number;
+  paybackPeriod: number;
+  roi25Years: number;
+  currency: string;
 }
 
 export interface SafetyChecks {

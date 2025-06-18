@@ -1,7 +1,81 @@
 import { PanelPreset } from '@/types';
 
-// Solar panel presets based on common specifications
+// Solar panel presets based on common specifications and Pakistani market
 export const PANEL_PRESETS: PanelPreset[] = [
+  // Pakistani Market Panels
+  {
+    id: '600w-topcon-ntype',
+    name: '600W TOPCon N-Type',
+    description: 'High efficiency N-Type TOPCon technology - Popular in Pakistan',
+    category: 'commercial',
+    manufacturer: 'JA Solar',
+    model: 'JAM72S30-600/MR',
+    voltage: 40.98,
+    current: 14.64,
+    power: 600,
+    voc: 49.45,
+    isc: 15.52,
+    maxSeriesFuse: 30,
+    maxSystemVoltage: 1500,
+    temperatureCoefficient: -0.30,
+    efficiency: 22.3,
+    countryAvailability: ['pakistan', 'india', 'usa', 'germany']
+  },
+  {
+    id: '580w-longi-himo6',
+    name: '580W Longi Hi-MO 6',
+    description: 'Premium mono PERC - Widely available in Pakistan',
+    category: 'commercial',
+    manufacturer: 'Longi',
+    model: 'LR5-72HIH-580M',
+    voltage: 40.1,
+    current: 14.47,
+    power: 580,
+    voc: 48.8,
+    isc: 15.39,
+    maxSeriesFuse: 30,
+    maxSystemVoltage: 1500,
+    temperatureCoefficient: -0.35,
+    efficiency: 21.8,
+    countryAvailability: ['pakistan', 'india', 'usa', 'uk']
+  },
+  {
+    id: '550w-trina-vertex',
+    name: '550W Trina Vertex',
+    description: 'Cost-effective choice - Common in Pakistani installations',
+    category: 'residential',
+    manufacturer: 'Trina Solar',
+    model: 'TSM-550NEG9R.28',
+    voltage: 38.4,
+    current: 14.33,
+    power: 550,
+    voc: 46.1,
+    isc: 15.26,
+    maxSeriesFuse: 30,
+    maxSystemVoltage: 1500,
+    temperatureCoefficient: -0.37,
+    efficiency: 21.2,
+    countryAvailability: ['pakistan', 'india', 'usa', 'germany', 'uk']
+  },
+  {
+    id: '545w-canadian-hiku7',
+    name: '545W Canadian HiKu7',
+    description: 'Reliable performance - Available through Pakistani distributors',
+    category: 'residential',
+    manufacturer: 'Canadian Solar',
+    model: 'CS7N-545MS',
+    voltage: 37.8,
+    current: 14.42,
+    power: 545,
+    voc: 45.7,
+    isc: 15.38,
+    maxSeriesFuse: 30,
+    maxSystemVoltage: 1500,
+    temperatureCoefficient: -0.35,
+    efficiency: 21.0,
+    countryAvailability: ['pakistan', 'usa', 'germany']
+  },
+  // International Standards
   {
     id: '600w-high-performance',
     name: '600W High Performance',
@@ -17,7 +91,8 @@ export const PANEL_PRESETS: PanelPreset[] = [
     maxSeriesFuse: 35,
     maxSystemVoltage: 1500,
     temperatureCoefficient: -0.35,
-    efficiency: 22.1
+    efficiency: 22.1,
+    countryAvailability: ['usa', 'uk', 'germany']
   },
   {
     id: '400w-standard',
@@ -104,16 +179,6 @@ export const ELECTRICAL_CONSTANTS = {
   MAX_STRING_LENGTH: 25, // Typical maximum panels per string
   MIN_OPERATING_VOLTAGE: 200, // Minimum for grid-tie inverters
   MAX_OPERATING_VOLTAGE: 600 // Common residential limit
-};
-
-// Cost assumptions (USD)
-export const COST_ASSUMPTIONS = {
-  PANEL_COST_PER_WATT: 0.50, // $/W
-  INSTALLATION_COST_PER_WATT: 1.50, // $/W
-  ELECTRICITY_RATE: 0.15, // $/kWh
-  ANNUAL_RATE_INCREASE: 0.03, // 3% per year
-  SYSTEM_DEGRADATION: 0.005, // 0.5% per year
-  DISCOUNT_RATE: 0.05 // 5% discount rate
 };
 
 // Environmental constants
