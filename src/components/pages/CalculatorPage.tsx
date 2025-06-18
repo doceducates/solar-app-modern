@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calculator, Settings, Zap, Play, Globe, Save, Plus, Trash2 } from 'lucide-react';
+import { Calculator, Settings, Zap, Play, Globe, Save, Plus, Trash2, Info, HelpCircle, BookOpen, AlertCircle } from 'lucide-react';
 import { PanelPreset, SystemConfiguration, ConfigurationResults, SafetyChecks } from '@/types';
 import { COUNTRIES, getCountryById } from '@/constants/countries';
 import { PANEL_PRESETS } from '@/constants/panels';
@@ -24,8 +24,8 @@ export function CalculatorPage() {  // Local state management - no context depen
     panelsPerGroup: 2
   });
   const [results, setResults] = useState<ConfigurationResults | null>(null);
-  const [safetyChecks, setSafetyChecks] = useState<SafetyChecks>({});
-  const [activeTab, setActiveTab] = useState<'series' | 'parallel' | 'combined'>('series');
+  const [safetyChecks, setSafetyChecks] = useState<SafetyChecks>({});  const [activeTab, setActiveTab] = useState<'series' | 'parallel' | 'combined'>('series');
+  const [showHelp, setShowHelp] = useState(false);
   
   // Custom preset management
   const [customPresets, setCustomPresets] = useState<PanelPreset[]>([]);
@@ -105,17 +105,145 @@ export function CalculatorPage() {  // Local state management - no context depen
   };
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Calculator className="w-8 h-8 text-primary" />
-        <div>
-          <h1 className="text-3xl font-bold">Solar System Calculator</h1>
-          <p className="text-muted-foreground">
-            Configure your solar panel system and calculate performance
-          </p>
+    <div className="space-y-8">      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Calculator className="w-8 h-8 text-primary" />
+          <div>
+            <h1 className="text-3xl font-bold">Solar System Calculator</h1>
+            <p className="text-muted-foreground">
+              Configure your solar panel system and calculate performance
+            </p>
+          </div>
         </div>
-      </div>      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <Button 
+          variant="outline" 
+          onClick={() => setShowHelp(!showHelp)}
+          className="flex items-center gap-2"
+        >
+          <HelpCircle className="w-4 h-4" />
+          {showHelp ? 'Hide Guide' : 'Show Guide'}
+        </Button>
+      </div>
+
+      {/* Help Section */}
+      {showHelp && (
+        <Card className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+              <BookOpen className="w-5 h-5" />
+              How to Use This Calculator
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Required vs Optional Fields */}
+            <div>
+              <h3 className="font-semibold text-lg text-amber-900 dark:text-amber-100 mb-3 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5" />
+                Required vs Optional Fields
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-red-50 dark:bg-red-950/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
+                  <h4 className="font-medium text-red-800 dark:text-red-200 mb-2">Required Fields *</h4>
+                  <ul className="text-sm text-red-700 dark:text-red-300 space-y-1">
+                    <li>• <strong>Voltage per Panel (Vmp)</strong> - For power calculations</li>
+                    <li>• <strong>Current per Panel (Imp)</strong> - For power calculations</li>
+                    <li>• <strong>Number of Panels</strong> - System size</li>
+                  </ul>
+                </div>
+                <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Optional Fields</h4>
+                  <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                    <li>• <strong>Open Circuit Voltage (Voc)</strong> - Safety checks</li>
+                    <li>• <strong>Short Circuit Current (Isc)</strong> - Safety checks</li>
+                    <li>• <strong>Max Fuse Rating</strong> - Compliance</li>
+                    <li>• <strong>System Efficiency</strong> - Performance tuning</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Where to Find Values */}
+            <div>
+              <h3 className="font-semibold text-lg text-amber-900 dark:text-amber-100 mb-3 flex items-center gap-2">
+                <Info className="w-5 h-5" />
+                Where to Find These Values
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-green-50 dark:bg-green-950/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                  <h4 className="font-medium text-green-800 dark:text-green-200 mb-2">On Panel Label/Sticker:</h4>
+                  <ul className="text-sm text-green-700 dark:text-green-300 space-y-1">
+                    <li>• <strong>Pmax</strong> = Power (e.g., 600W)</li>
+                    <li>• <strong>Vmp</strong> = Operating Voltage (e.g., 40.3V)</li>
+                    <li>• <strong>Imp</strong> = Operating Current (e.g., 14.91A)</li>
+                    <li>• <strong>Voc</strong> = Open Circuit Voltage (e.g., 48.4V)</li>
+                    <li>• <strong>Isc</strong> = Short Circuit Current (e.g., 15.80A)</li>
+                  </ul>
+                </div>
+                <div className="bg-purple-50 dark:bg-purple-950/20 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
+                  <h4 className="font-medium text-purple-800 dark:text-purple-200 mb-2">In Panel Datasheet:</h4>
+                  <ul className="text-sm text-purple-700 dark:text-purple-300 space-y-1">
+                    <li>• <strong>Maximum System Voltage</strong> (e.g., 1500V)</li>
+                    <li>• <strong>Maximum Series Fuse Rating</strong> (e.g., 35A)</li>
+                    <li>• <strong>Temperature Coefficients</strong></li>
+                    <li>• <strong>Detailed Specifications</strong></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Example Panel */}
+            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/20 dark:to-blue-950/20 p-4 rounded-lg border border-indigo-200 dark:border-indigo-800">
+              <h3 className="font-semibold text-lg text-indigo-900 dark:text-indigo-100 mb-3">
+                Example: 600W Solar Panel
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <h4 className="font-medium text-indigo-800 dark:text-indigo-200 mb-2">Enter These Values:</h4>
+                  <ul className="text-indigo-700 dark:text-indigo-300 space-y-1">
+                    <li>• <strong>Voltage per Panel:</strong> 40.3V (Vmp)</li>
+                    <li>• <strong>Current per Panel:</strong> 14.91A (Imp)</li>
+                    <li>• <strong>Open Circuit Voltage:</strong> 48.4V (Voc)</li>
+                    <li>• <strong>Short Circuit Current:</strong> 15.80A (Isc)</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-medium text-indigo-800 dark:text-indigo-200 mb-2">Optional Safety Values:</h4>
+                  <ul className="text-indigo-700 dark:text-indigo-300 space-y-1">
+                    <li>• <strong>Max Fuse Rating:</strong> 35A</li>
+                    <li>• <strong>Max System Voltage:</strong> 1500V</li>
+                    <li>• <strong>Power:</strong> 600W (calculated: 40.3V × 14.91A)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Presets vs Manual */}
+            <div className="bg-teal-50 dark:bg-teal-950/20 p-4 rounded-lg border border-teal-200 dark:border-teal-800">
+              <h3 className="font-semibold text-lg text-teal-900 dark:text-teal-100 mb-2">
+                When to Use Presets vs Manual Entry
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <h4 className="font-medium text-teal-800 dark:text-teal-200 mb-2">Use Presets When:</h4>
+                  <ul className="text-teal-700 dark:text-teal-300 space-y-1">
+                    <li>• You have a common panel model</li>
+                    <li>• You want quick estimates</li>                    <li>• You&apos;re comparing different panel types</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-medium text-teal-800 dark:text-teal-200 mb-2">Use Manual Entry When:</h4>
+                  <ul className="text-teal-700 dark:text-teal-300 space-y-1">
+                    <li>• You have specific panel specifications</li>
+                    <li>• Your panel isn&apos;t in the presets</li>
+                    <li>• You need precise calculations</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}<div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         {/* Configuration Panel */}
         <div className="xl:col-span-1 space-y-6">
           {/* Calculate Button - Moved to Top */}
@@ -243,14 +371,16 @@ export function CalculatorPage() {  // Local state management - no context depen
                     </div>
                   </div>
                 )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+              </div>              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="voltage" className="text-sm font-semibold">Voltage (V)</Label>
+                  <Label htmlFor="voltage" className="text-sm font-semibold flex items-center gap-1">
+                    Voltage per Panel (Vmp) <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="voltage"
                     type="number"
+                    step="0.1"
+                    placeholder="e.g., 40.3"
                     value={panelSpecs.voltage}
                     onChange={(e) => setPanelSpecs((prev: PanelPreset) => ({
                       ...prev,
@@ -259,12 +389,19 @@ export function CalculatorPage() {  // Local state management - no context depen
                     }))}
                     className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Find &quot;Vmp&quot; on panel label
+                  </p>
                 </div>
                 <div>
-                  <Label htmlFor="current" className="text-sm font-semibold">Current (A)</Label>
+                  <Label htmlFor="current" className="text-sm font-semibold flex items-center gap-1">
+                    Current per Panel (Imp) <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="current"
                     type="number"
+                    step="0.1"
+                    placeholder="e.g., 14.91"
                     value={panelSpecs.current}
                     onChange={(e) => setPanelSpecs((prev: PanelPreset) => ({
                       ...prev,
@@ -273,17 +410,99 @@ export function CalculatorPage() {  // Local state management - no context depen
                     }))}
                     className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Find &quot;Imp&quot; on panel label
+                  </p>
                 </div>
-              </div>
-
-              {/* Calculated Power Display */}
+              </div>              {/* Calculated Power Display */}
               <div className="bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-950/30 dark:to-emerald-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
                 <div className="text-center">
                   <span className="text-2xl font-bold text-green-700 dark:text-green-400">
                     {(panelSpecs.voltage * panelSpecs.current).toFixed(0)}W
                   </span>
-                  <p className="text-xs text-green-600 dark:text-green-500">Panel Power</p>
+                  <p className="text-xs text-green-600 dark:text-green-500">Panel Power (Calculated: {panelSpecs.voltage}V × {panelSpecs.current}A)</p>
                 </div>
+              </div>              {/* Optional Safety Fields */}
+              <div className="border-t pt-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertCircle className="w-4 h-4 text-orange-600" />
+                  <Label className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                    Optional Safety Values (for compliance checks)
+                  </Label>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="voc" className="text-xs text-muted-foreground">
+                      Open Circuit Voltage (Voc)
+                    </Label>
+                    <Input
+                      id="voc"
+                      type="number"
+                      step="0.1"
+                      placeholder="e.g., 48.4"
+                      value={panelSpecs.voc || ''}
+                      onChange={(e) => setPanelSpecs((prev: PanelPreset) => ({
+                        ...prev,
+                        voc: Number(e.target.value) || prev.voltage * 1.2
+                      }))}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="isc" className="text-xs text-muted-foreground">
+                      Short Circuit Current (Isc)
+                    </Label>
+                    <Input
+                      id="isc"
+                      type="number"
+                      step="0.1"
+                      placeholder="e.g., 15.80"
+                      value={panelSpecs.isc || ''}
+                      onChange={(e) => setPanelSpecs((prev: PanelPreset) => ({
+                        ...prev,
+                        isc: Number(e.target.value) || prev.current * 1.2
+                      }))}
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <Label htmlFor="maxFuse" className="text-xs text-muted-foreground">
+                      Max Series Fuse (A)
+                    </Label>
+                    <Input
+                      id="maxFuse"
+                      type="number"
+                      placeholder="e.g., 35"
+                      value={panelSpecs.maxSeriesFuse || ''}
+                      onChange={(e) => setPanelSpecs((prev: PanelPreset) => ({
+                        ...prev,
+                        maxSeriesFuse: Number(e.target.value) || Math.ceil(prev.current * 1.56)
+                      }))}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="maxSysVoltage" className="text-xs text-muted-foreground">
+                      Max System Voltage (V)
+                    </Label>
+                    <Input
+                      id="maxSysVoltage"
+                      type="number"
+                      placeholder="e.g., 1500"
+                      value={panelSpecs.maxSystemVoltage || ''}
+                      onChange={(e) => setPanelSpecs((prev: PanelPreset) => ({
+                        ...prev,
+                        maxSystemVoltage: Number(e.target.value) || 1000
+                      }))}
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2 italic">
+                  💡 These values are found on the panel datasheet and help ensure system safety compliance
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -295,15 +514,17 @@ export function CalculatorPage() {  // Local state management - no context depen
                 <Settings className="w-5 h-5 text-purple-600" />
                 System Configuration
               </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-6">
+            </CardHeader>            <CardContent className="space-y-4 pt-6">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="panels" className="text-sm font-semibold">Number of Panels</Label>
+                  <Label htmlFor="panels" className="text-sm font-semibold flex items-center gap-1">
+                    Number of Panels <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="panels"
                     type="number"
                     min="1"
+                    placeholder="e.g., 4"
                     value={systemConfig.panels}
                     onChange={(e) => setSystemConfig(prev => ({
                       ...prev,
@@ -311,6 +532,9 @@ export function CalculatorPage() {  // Local state management - no context depen
                     }))}
                     className="bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Total panels in your system
+                  </p>
                 </div>
                 <div>
                   <Label htmlFor="efficiency" className="text-sm font-semibold">System Efficiency (%)</Label>
@@ -319,13 +543,16 @@ export function CalculatorPage() {  // Local state management - no context depen
                     type="number"
                     min="1"
                     max="100"
-                    value={systemConfig.efficiency}
+                    placeholder="85"                    value={systemConfig.efficiency}
                     onChange={(e) => setSystemConfig(prev => ({
                       ...prev,
                       efficiency: Number(e.target.value)
                     }))}
                     className="bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    System losses (default: 85% is typical)
+                  </p>
                 </div>
               </div>
 

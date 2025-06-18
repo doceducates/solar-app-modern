@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { SolarProvider } from "@/components/providers/SolarProvider";
+import { DatabaseInitializer } from "@/components/DatabaseInitializer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
