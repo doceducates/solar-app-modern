@@ -42,7 +42,7 @@ export default function PanelInput({
         maxSystemVoltage: 0
       });
     } else {
-      const preset = availablePanels.find(p => p.id === presetId);
+      const preset = availablePanels.find(p => p.id === presetId) || PANEL_PRESETS.find(p => p.id === presetId);
       if (preset) {
         onPanelSpecsChange(preset);
       }
@@ -83,7 +83,7 @@ export default function PanelInput({
               <SelectValue placeholder="Select a preset or enter custom values below" />
             </SelectTrigger>
             <SelectContent>
-              {PANEL_PRESETS.map((preset) => (
+              {availablePanels.map((preset) => (
                 <SelectItem key={preset.id} value={preset.id}>
                   {preset.name} (Vmp: {preset.voltage}V, Imp: {preset.current}A)
                 </SelectItem>

@@ -5,11 +5,9 @@ import {
   ConfigurationResults,
   SafetyCheck,
   SafetyChecks,
-  CostAnalysis,
   EnvironmentalImpact
 } from '@/types';
 import {
-  COST_ASSUMPTIONS,
   ENVIRONMENTAL_CONSTANTS
 } from '@/constants/panels';
 
@@ -212,52 +210,7 @@ export function performAllSafetyChecks(
   return {
     series: convertChecksToFormat(checkSeriesSafety(panelSpecs, config)),
     parallel: convertChecksToFormat(checkParallelSafety(panelSpecs, config)),
-    combined: convertChecksToFormat(checkCombinedSafety(panelSpecs, config))
-  };
-}
-
-/**
- * Calculate cost analysis
- */
-export function calculateCostAnalysis(
-  panelSpecs: PanelSpecifications,
-  config: SystemConfiguration,
-  results: ConfigurationResults
-): CostAnalysis {
-  const systemPower = Math.max(results.series.power, results.parallel.power, results.combined.power);
-  const panelCost = systemPower * COST_ASSUMPTIONS.PANEL_COST_PER_WATT;
-  const installationCost = systemPower * COST_ASSUMPTIONS.INSTALLATION_COST_PER_WATT;
-  const totalCost = panelCost + installationCost;
-  const costPerWatt = totalCost / systemPower;
-  
-  // Calculate annual energy production (assuming 4.5 peak sun hours average)
-  const annualEnergy = systemPower * 4.5 * 365 / 1000; // kWh per year
-  const annualSavings = annualEnergy * COST_ASSUMPTIONS.ELECTRICITY_RATE;
-  const paybackPeriod = totalCost / annualSavings;
-  
-  // Calculate 20-year savings with rate increases and system degradation
-  let totalSavings = 0;
-  let currentEnergy = annualEnergy;
-  let currentRate = COST_ASSUMPTIONS.ELECTRICITY_RATE;
-  
-  for (let year = 1; year <= 20; year++) {
-    currentRate *= (1 + COST_ASSUMPTIONS.ANNUAL_RATE_INCREASE);
-    currentEnergy *= (1 - COST_ASSUMPTIONS.SYSTEM_DEGRADATION);
-    totalSavings += currentEnergy * currentRate;
-  }
-  
-  const savings20Years = totalSavings - totalCost;
-  const roi = (savings20Years / totalCost) * 100;
-
-  return {
-    panelCost,
-    installationCost,
-    totalCost,
-    costPerWatt,
-    paybackPeriod,
-    roi,
-    savings20Years
-  };
+    combined: convertChecksToFormat(checkCombinedSafety(panelSpecs, config))  };
 }
 
 /**

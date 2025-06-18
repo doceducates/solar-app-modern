@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Calculator, Sun, Zap } from 'lucide-react';
 import { PanelSpecifications, SystemConfiguration, ConfigurationResults, SafetyChecks, CostAnalysis } from '@/types';
 import { PANEL_PRESETS } from '@/constants/panels';
-import { COUNTRIES, getCountryById } from '@/constants/countries';
+import { getCountryById } from '@/constants/countries';
 import { calculateAllConfigurations, performAllSafetyChecks } from '@/lib/calculations';
 import { calculateSystemCost } from '@/lib/cost-calculations';
 import PanelInput from './PanelInput';
@@ -13,6 +13,7 @@ import ResultsDisplay from './ResultsDisplay';
 import ComparisonChart from './ComparisonChart';
 import { CountrySelector } from './CountrySelector';
 import { CostAnalysisDisplay } from './CostAnalysisDisplay';
+import { CostInput } from './CostInput';
 
 export default function SolarCalculator() {
   const [selectedCountry, setSelectedCountry] = useState<string>('pakistan');
@@ -27,10 +28,32 @@ export default function SolarCalculator() {
   const [activeTab, setActiveTab] = useState<'series' | 'parallel' | 'combined'>('series');
   const [safetyChecks, setSafetyChecks] = useState<SafetyChecks>({});
   const [costAnalysis, setCostAnalysis] = useState<CostAnalysis | null>(null);
+  
+  // Custom cost inputs state
+  const [customCosts, setCustomCosts] = useState({
+    panelCostPerWatt: 30,
+    installationCostPerWatt: 45,
+    electricityRate: 25,
+    laborRate: 800,
+    installationHours: 40,
+    permitCost: 15000
+  });
 
   // Get current country data
   const currentCountry = getCountryById(selectedCountry);
-  // Calculate results whenever inputs change
+  // Initialize custom costs when country changes
+  useEffect(() => {
+    if (currentCountry) {
+      setCustomCosts({
+        panelCostPerWatt: currentCountry.pricing.panelCostPerWatt,
+        installationCostPerWatt: currentCountry.pricing.installationCostPerWatt,
+        electricityRate: currentCountry.pricing.electricityRate,
+        laborRate: currentCountry.pricing.laborRate,
+        installationHours: 40,
+        permitCost: currentCountry.pricing.permitCost
+      });
+    }
+  }, [currentCountry]);  // Calculate results whenever inputs change
   useEffect(() => {
     if (panelSpecs.voltage > 0 && panelSpecs.current > 0 && systemConfig.panels > 0) {
       const newResults = calculateAllConfigurations(panelSpecs, systemConfig);
@@ -44,7 +67,8 @@ export default function SolarCalculator() {
         const totalPower = panelSpecs.power * systemConfig.panels;
         const newCostAnalysis = calculateSystemCost({
           totalPower,
-          country: currentCountry
+          country: currentCountry,
+          customCosts
         });
         setCostAnalysis(newCostAnalysis);
       }
@@ -53,7 +77,7 @@ export default function SolarCalculator() {
       setSafetyChecks({});
       setCostAnalysis(null);
     }
-  }, [panelSpecs, systemConfig, currentCountry]);
+  }, [panelSpecs, systemConfig, currentCountry, customCosts]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -74,8 +98,7 @@ export default function SolarCalculator() {
           Calculate theoretical power outputs for different solar panel configurations. 
           Analyze series, parallel, and combined setups with real-time safety validation.
         </p>
-      </header>      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        {/* Input Panel */}
+      </header>      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">        {/* Input Panel */}
         <div className="xl:col-span-1 space-y-6">
           <CountrySelector
             selectedCountry={selectedCountry}
@@ -88,6 +111,13 @@ export default function SolarCalculator() {
             onSystemConfigChange={setSystemConfig}
             selectedCountry={selectedCountry}
           />
+          {currentCountry && (
+            <CostInput
+              country={currentCountry}
+              customCosts={customCosts}
+              onCostChange={setCustomCosts}
+            />
+          )}
         </div>
 
         {/* Results Section */}

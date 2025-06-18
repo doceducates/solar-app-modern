@@ -13,27 +13,39 @@ export const FINANCIAL_ASSUMPTIONS = {
 export interface CostCalculationInput {
   totalPower: number; // Total system power in watts
   country: CountryPricing;
-  installationHours?: number; // Optional custom installation time
-  customPanelPrice?: number; // Optional custom panel price per watt
+  customCosts?: {
+    panelCostPerWatt?: number;
+    installationCostPerWatt?: number;
+    electricityRate?: number;
+    laborRate?: number;
+    permitCost?: number;
+    installationHours?: number;
+  };
 }
 
 export function calculateSystemCost(input: CostCalculationInput): CostAnalysis {
-  const { totalPower, country, installationHours = 40, customPanelPrice } = input;
+  const { totalPower, country, customCosts = {} } = input;
   const powerInKW = totalPower / 1000;
 
+  // Use custom costs or fall back to country defaults
+  const panelCostPerWatt = customCosts.panelCostPerWatt ?? country.pricing.panelCostPerWatt;
+  const installationCostPerWatt = customCosts.installationCostPerWatt ?? country.pricing.installationCostPerWatt;
+  const electricityRate = customCosts.electricityRate ?? country.pricing.electricityRate;
+  const laborRate = customCosts.laborRate ?? country.pricing.laborRate;
+  const permitCost = customCosts.permitCost ?? (country.regulations.requiresPermit ? country.pricing.permitCost : 0);
+  const installationHours = customCosts.installationHours ?? 40;
+
   // Calculate costs
-  const panelCostPerWatt = customPanelPrice || country.pricing.panelCostPerWatt;
   const panelCost = totalPower * panelCostPerWatt;
-  const installationCost = totalPower * country.pricing.installationCostPerWatt;
-  const laborCost = installationHours * country.pricing.laborRate;
-  const permitCost = country.regulations.requiresPermit ? country.pricing.permitCost : 0;
+  const installationCost = totalPower * installationCostPerWatt;
+  const laborCost = installationHours * laborRate;
   
   const totalSystemCost = panelCost + installationCost + laborCost + permitCost;
   const costPerWatt = totalSystemCost / totalPower;
 
   // Calculate annual energy production and savings
   const annualEnergyProduction = powerInKW * FINANCIAL_ASSUMPTIONS.DAILY_SUN_HOURS * 365;
-  const annualSavings = annualEnergyProduction * country.pricing.electricityRate;
+  const annualSavings = annualEnergyProduction * electricityRate;
 
   // Calculate payback period
   const paybackPeriod = totalSystemCost / annualSavings;
@@ -41,7 +53,7 @@ export function calculateSystemCost(input: CostCalculationInput): CostAnalysis {
   // Calculate 25-year ROI
   let totalSavings = 0;
   let currentProduction = annualEnergyProduction;
-  let currentElectricityRate = country.pricing.electricityRate;
+  let currentElectricityRate = electricityRate;
 
   for (let year = 1; year <= FINANCIAL_ASSUMPTIONS.SYSTEM_LIFESPAN; year++) {
     const yearSavings = currentProduction * currentElectricityRate;

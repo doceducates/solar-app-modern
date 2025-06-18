@@ -106,18 +106,7 @@ export interface SafetyChecks {
   combined?: {
     errors?: string[];
     warnings?: string[];
-    info?: string[];
-  };
-}
-
-export interface CostAnalysis {
-  panelCost: number;
-  installationCost: number;
-  totalCost: number;
-  costPerWatt: number;
-  paybackPeriod: number; // years
-  roi: number; // percentage
-  savings20Years: number;
+    info?: string[];  };
 }
 
 export interface EnvironmentalImpact {
