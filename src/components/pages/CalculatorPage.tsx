@@ -6,12 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calculator, Settings, Zap, Play, Globe, Trash2, Info, HelpCircle, BookOpen, AlertCircle } from 'lucide-react';
-import { PanelPreset, SystemConfiguration, ConfigurationResults, SafetyChecks } from '@/types';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Calculator, Settings, Zap, Play, Globe, Trash2, Info, HelpCircle, BookOpen, AlertCircle, Activity } from 'lucide-react';
+import { PanelPreset, SystemConfiguration, ConfigurationResults, SafetyChecks, LocationData, SolarConditions } from '@/types';
 import { calculateAllConfigurations, performAllSafetyChecks } from '@/lib/calculations';
 import ConfigurationTabs from '@/components/ConfigurationTabs';
 import ResultsDisplay from '@/components/ResultsDisplay';
 import CustomPresetModal from '@/components/CustomPresetModal';
+import RealTimeDataDisplay from '@/components/RealTimeDataDisplay';
+import LocationSelector from '@/components/LocationSelector';
 import { useCountries, usePanelPresets } from '@/hooks/useDatabase';
 
 export function CalculatorPage() {  // Database hooks
@@ -41,10 +44,16 @@ export function CalculatorPage() {  // Database hooks
     efficiency: 85,
     seriesGroups: 2,
     panelsPerGroup: 2
-  });
-  const [results, setResults] = useState<ConfigurationResults | null>(null);
-  const [safetyChecks, setSafetyChecks] = useState<SafetyChecks>({});  const [activeTab, setActiveTab] = useState<'series' | 'parallel' | 'combined'>('series');
-  const [showHelp, setShowHelp] = useState(false);  // Custom preset management
+  });  const [results, setResults] = useState<ConfigurationResults | null>(null);
+  const [safetyChecks, setSafetyChecks] = useState<SafetyChecks>({});
+  
+  // Location and real-time data state
+  const [selectedLocation, setSelectedLocation] = useState<LocationData | null>(null);
+  const [realTimeConditions, setRealTimeConditions] = useState<SolarConditions | null>(null);
+  const [useLocationBasedEfficiency, setUseLocationBasedEfficiency] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<'series' | 'parallel' | 'combined'>('series');
+  const [showHelp, setShowHelp] = useState(false);// Custom preset management
   
   const [customCosts, setCustomCosts] = useState(() => {
     const defaultCountry = getCountryById('pakistan');
@@ -57,6 +66,9 @@ export function CalculatorPage() {  // Database hooks
       permitCost: defaultCountry?.pricing.permitCost || 15000
     };
   });
+  const [realTimeEfficiency, setRealTimeEfficiency] = useState<number | null>(null);
+  const [useRealTimeData, setUseRealTimeData] = useState(false);
+  
   const currentCountry = useMemo(() => getCountryById(selectedCountryId), [selectedCountryId, getCountryById]);
   const canCalculate = panelSpecs.voltage > 0 && panelSpecs.current > 0 && systemConfig.panels > 0;
 
@@ -81,6 +93,27 @@ export function CalculatorPage() {  // Database hooks
       }));
     }
   }, [selectedCountryId, getCountryById]);
+
+  // Location handling
+  const handleLocationSelect = (location: LocationData, conditions?: SolarConditions) => {
+    setSelectedLocation(location);
+    setRealTimeConditions(conditions || null);
+    
+    // Auto-enable location-based efficiency when real-time data is available
+    if (conditions && conditions.efficiency.overallEfficiency > 0) {
+      setUseLocationBasedEfficiency(true);
+    }
+  };
+
+  // Calculate efficiency factor based on location data
+  const getEfficiencyFactor = () => {
+    if (useLocationBasedEfficiency && realTimeConditions) {
+      // Use real-time efficiency factor
+      return realTimeConditions.efficiency.overallEfficiency;
+    }
+    // Use system efficiency setting
+    return systemConfig.efficiency / 100;
+  };
 
   // Handlers
   const handleCountryChange = (countryId: string) => {
@@ -117,12 +150,17 @@ export function CalculatorPage() {  // Database hooks
     } catch (error) {
       console.error('Failed to delete preset:', error);
     }
-  };
-
-  const handleCalculate = () => {
+  };  const handleCalculate = () => {
     if (canCalculate) {
-      const newResults = calculateAllConfigurations(panelSpecs, systemConfig);
-      const newSafetyChecks = performAllSafetyChecks(panelSpecs, systemConfig);
+      // Use location-based efficiency if available
+      const effectiveEfficiency = getEfficiencyFactor() * 100;
+      const effectiveSystemConfig = {
+        ...systemConfig,
+        efficiency: effectiveEfficiency
+      };
+      
+      const newResults = calculateAllConfigurations(panelSpecs, effectiveSystemConfig);
+      const newSafetyChecks = performAllSafetyChecks(panelSpecs, effectiveSystemConfig);
       setResults(newResults);
       setSafetyChecks(newSafetyChecks);
     }
@@ -267,7 +305,82 @@ export function CalculatorPage() {  // Database hooks
             </div>
           </CardContent>
         </Card>
-      )}<div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      )      }<Tabs defaultValue="calculator" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="calculator" className="flex items-center gap-2">
+            <Calculator className="w-4 h-4" />
+            Calculator
+          </TabsTrigger>
+          <TabsTrigger value="real-time" className="flex items-center gap-2">
+            <Activity className="w-4 h-4" />
+            Real-Time Data
+          </TabsTrigger>
+        </TabsList>        <TabsContent value="calculator" className="space-y-6">
+          {/* Location Selection Section */}
+          <LocationSelector 
+            onLocationSelect={handleLocationSelect}
+            selectedLocation={selectedLocation}
+            showRealTimeData={false}
+          />
+
+          {/* Location-Based Efficiency Display */}
+          {useLocationBasedEfficiency && realTimeConditions && (
+            <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-green-800 dark:text-green-200">
+                    <Activity className="w-5 h-5" />
+                    Location-Based Efficiency Active
+                  </div>
+                  <Button
+                    onClick={() => setUseLocationBasedEfficiency(false)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Use Manual Efficiency
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-700 dark:text-green-300">
+                      {(realTimeConditions.efficiency.overallEfficiency * 100).toFixed(1)}%
+                    </div>
+                    <div className="text-sm text-green-600 dark:text-green-400">
+                      Real-Time Efficiency
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-700 dark:text-green-300">
+                      {realTimeConditions.weather.temperature.toFixed(1)}°C
+                    </div>
+                    <div className="text-sm text-green-600 dark:text-green-400">
+                      Current Temperature
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-700 dark:text-green-300">
+                      {realTimeConditions.irradiance.ghi.toFixed(0)} W/m²
+                    </div>
+                    <div className="text-sm text-green-600 dark:text-green-400">
+                      Solar Irradiance
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    <strong>Location:</strong> {selectedLocation?.city}, {selectedLocation?.country}
+                  </p>
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    <strong>Conditions:</strong> {realTimeConditions.recommendations.message}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         {/* Configuration Panel */}
         <div className="xl:col-span-1 space-y-6">
           {/* Calculate Button - Moved to Top */}
@@ -763,14 +876,79 @@ export function CalculatorPage() {  // Database hooks
                     </h3>
                     <p className="text-sm text-orange-700 dark:text-orange-200">
                       Analyze power output and safety recommendations
-                    </p>
-                  </div>
+                    </p>                  </div>
                 </div>
               </CardContent>
             </Card>
           )}
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="real-time" className="space-y-6">
+          <RealTimeDataDisplay 
+            onEfficiencyUpdate={(efficiency) => {
+              setRealTimeEfficiency(efficiency);
+              setUseRealTimeData(true);
+            }}
+            systemSize={(panelSpecs.power * systemConfig.panels) / 1000} // Convert W to kW
+          />
+          
+          {realTimeEfficiency !== null && (
+            <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-green-800 dark:text-green-200">
+                  <Zap className="w-5 h-5" />
+                  Real-Time Efficiency Applied
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-700 dark:text-green-300">
+                      {realTimeEfficiency.toFixed(1)}%
+                    </div>
+                    <div className="text-sm text-green-600 dark:text-green-400">
+                      Current Real-Time Efficiency
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-700 dark:text-green-300">
+                      {systemConfig.efficiency}%
+                    </div>
+                    <div className="text-sm text-green-600 dark:text-green-400">
+                      Base System Efficiency
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-700 dark:text-green-300">
+                      {((realTimeEfficiency / 100) * (systemConfig.efficiency / 100) * 100).toFixed(1)}%
+                    </div>
+                    <div className="text-sm text-green-600 dark:text-green-400">
+                      Combined Efficiency
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">                  <p className="text-sm text-green-800 dark:text-green-200">
+                    💡 <strong>Tip:</strong> Use &quot;Apply to Calculator&quot; to factor these real-time conditions into your solar calculations.
+                  </p>
+                  <Button 
+                    onClick={() => {
+                      const combinedEfficiency = (realTimeEfficiency / 100) * (systemConfig.efficiency / 100) * 100;
+                      setSystemConfig(prev => ({ ...prev, efficiency: combinedEfficiency }));
+                      setUseRealTimeData(true);
+                    }}
+                    className="mt-3 bg-green-600 hover:bg-green-700"
+                    size="sm"
+                  >
+                    Apply to Calculator
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

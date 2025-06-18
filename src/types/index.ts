@@ -389,3 +389,104 @@ export interface SystemAnalysisResult {
   
   mixedPanelWarnings?: string[];
 }
+
+// Real-World Data Types for Solar Efficiency Calculations
+export interface WeatherData {
+  temperature: number; // Current temperature (°C)
+  humidity: number; // Relative humidity (%)
+  cloudCover: number; // Cloud coverage (0-100%)
+  uvIndex: number; // UV index (0-11+)
+  visibility: number; // Visibility (km)
+  windSpeed: number; // Wind speed (m/s)
+  pressure: number; // Atmospheric pressure (hPa)
+  sunrise: number; // Sunrise timestamp
+  sunset: number; // Sunset timestamp
+  description: string; // Weather description
+  location: {
+    city: string;
+    country: string;
+    latitude: number;
+    longitude: number;
+  };
+  timestamp: number; // Data timestamp
+}
+
+export interface SolarIrradianceData {
+  ghi: number; // Global Horizontal Irradiance (W/m²)
+  dni: number; // Direct Normal Irradiance (W/m²)
+  dhi: number; // Diffuse Horizontal Irradiance (W/m²)
+  clearSkyGhi: number; // Clear sky GHI (W/m²)
+  solarZenithAngle: number; // Solar zenith angle (degrees)
+  solarAzimuthAngle: number; // Solar azimuth angle (degrees)
+  airMass: number; // Air mass coefficient
+  timestamp: number; // Data timestamp
+  dataSource: 'nasa' | 'nrel' | 'openweather' | 'weatherapi';
+}
+
+export interface SolarConditions {
+  weather: WeatherData;
+  irradiance: SolarIrradianceData;
+  efficiency: {
+    temperatureFactor: number; // Temperature efficiency factor (0-1)
+    irradianceFactor: number; // Irradiance efficiency factor (0-1)
+    weatherFactor: number; // Overall weather efficiency factor (0-1)
+    overallEfficiency: number; // Combined efficiency factor (0-1)
+  };
+  recommendations: {
+    isOptimal: boolean;
+    message: string;
+    improvements: string[];
+  };
+}
+
+export interface LocationData {
+  latitude: number;
+  longitude: number;
+  city: string;
+  country: string;
+  timezone: string;
+  elevation?: number; // Elevation above sea level (meters)
+}
+
+export interface HistoricalSolarData {
+  date: string; // ISO date string
+  avgGhi: number; // Average daily GHI (kWh/m²/day)
+  avgTemperature: number; // Average temperature (°C)
+  avgCloudCover: number; // Average cloud cover (%)
+  peakSunHours: number; // Peak sun hours for the day
+  estimatedOutput: number; // Estimated solar output (kWh)
+}
+
+export interface RealTimeEfficiencyFactors {
+  baseEfficiency: number; // System base efficiency (%)
+  temperatureDerating: number; // Temperature derating factor (0-1)
+  irradianceDerating: number; // Irradiance derating factor (0-1)
+  cloudDerating: number; // Cloud cover derating factor (0-1)
+  seasonalFactor: number; // Seasonal efficiency factor (0-1)
+  timeOfDayFactor: number; // Time of day factor (0-1)
+  realTimeEfficiency: number; // Current real-time efficiency (%)
+  projectedDailyOutput: number; // Projected daily output (kWh)
+}
+
+// API Response Types
+export interface WeatherAPIResponse {
+  success: boolean;
+  data?: WeatherData;
+  error?: string;
+  rateLimitRemaining?: number;
+}
+
+export interface SolarDataAPIResponse {
+  success: boolean;
+  data?: SolarIrradianceData;
+  error?: string;
+  source: 'nasa' | 'nrel' | 'openweather' | 'weatherapi';
+}
+
+export interface RealTimeDataResponse {
+  success: boolean;
+  data?: SolarConditions;
+  error?: string;
+  lastUpdated: number;
+  nextUpdate: number;
+}
