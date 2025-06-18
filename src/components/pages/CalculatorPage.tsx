@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,15 +8,35 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calculator, Settings, Zap, Play, Globe, Save, Plus, Trash2, Info, HelpCircle, BookOpen, AlertCircle } from 'lucide-react';
 import { PanelPreset, SystemConfiguration, ConfigurationResults, SafetyChecks } from '@/types';
-import { COUNTRIES, getCountryById } from '@/constants/countries';
-import { PANEL_PRESETS } from '@/constants/panels';
 import { calculateAllConfigurations, performAllSafetyChecks } from '@/lib/calculations';
 import ConfigurationTabs from '@/components/ConfigurationTabs';
 import ResultsDisplay from '@/components/ResultsDisplay';
+import { useCountries, usePanelPresets, useCalculationHistory } from '@/hooks/useDatabase';
 
-export function CalculatorPage() {  // Local state management - no context dependencies
+export function CalculatorPage() {
+  // Database hooks
+  const { countries, getCountryById } = useCountries();
+  const { presets, addPreset, deletePreset, getPresetByName } = usePanelPresets();
+  const { saveCalculation } = useCalculationHistory();
+  
+  // Local state management - using database data
   const [selectedCountryId, setSelectedCountryId] = useState('pakistan');
-  const [panelSpecs, setPanelSpecs] = useState<PanelPreset>(PANEL_PRESETS[0]);
+  const [panelSpecs, setPanelSpecs] = useState<PanelPreset>(() => {
+    // Will be set when presets load
+    return {
+      id: 'temp',
+      name: 'Loading...',
+      description: 'Loading panel data...',
+      category: 'residential',
+      voltage: 0,
+      current: 0,
+      power: 0,
+      voc: 0,
+      isc: 0,
+      maxSeriesFuse: 0,
+      maxSystemVoltage: 1000
+    };
+  });
   const [systemConfig, setSystemConfig] = useState<SystemConfiguration>({
     panels: 4,
     efficiency: 85,
@@ -26,9 +46,7 @@ export function CalculatorPage() {  // Local state management - no context depen
   const [results, setResults] = useState<ConfigurationResults | null>(null);
   const [safetyChecks, setSafetyChecks] = useState<SafetyChecks>({});  const [activeTab, setActiveTab] = useState<'series' | 'parallel' | 'combined'>('series');
   const [showHelp, setShowHelp] = useState(false);
-  
-  // Custom preset management
-  const [customPresets, setCustomPresets] = useState<PanelPreset[]>([]);
+    // Custom preset management
   const [isCreatingPreset, setIsCreatingPreset] = useState(false);
   const [newPresetName, setNewPresetName] = useState('');
   
@@ -43,9 +61,30 @@ export function CalculatorPage() {  // Local state management - no context depen
       permitCost: defaultCountry?.pricing.permitCost || 15000
     };
   });
-
-  const currentCountry = useMemo(() => getCountryById(selectedCountryId), [selectedCountryId]);
+  const currentCountry = useMemo(() => getCountryById(selectedCountryId), [selectedCountryId, getCountryById]);
   const canCalculate = panelSpecs.voltage > 0 && panelSpecs.current > 0 && systemConfig.panels > 0;
+
+  // Set default panel when presets load
+  useEffect(() => {
+    if (presets.length > 0 && panelSpecs.voltage === 0) {
+      setPanelSpecs(presets[0]);
+    }
+  }, [presets, panelSpecs.voltage]);
+
+  // Update costs when countries load or country changes
+  useEffect(() => {
+    const defaultCountry = getCountryById(selectedCountryId);
+    if (defaultCountry) {
+      setCustomCosts(prev => ({
+        panelCostPerWatt: defaultCountry.pricing.panelCostPerWatt,
+        installationCostPerWatt: defaultCountry.pricing.installationCostPerWatt,
+        electricityRate: defaultCountry.pricing.electricityRate,
+        laborRate: defaultCountry.pricing.laborRate,
+        installationHours: prev.installationHours,
+        permitCost: defaultCountry.pricing.permitCost
+      }));
+    }
+  }, [selectedCountryId, getCountryById]);
 
   // Handlers
   const handleCountryChange = (countryId: string) => {
@@ -61,14 +100,14 @@ export function CalculatorPage() {  // Local state management - no context depen
         permitCost: country.pricing.permitCost
       }));
     }
-  };
-  const handlePanelPresetChange = (presetName: string) => {
-    const preset = [...PANEL_PRESETS, ...customPresets].find(p => p.name === presetName);
+  };  const handlePanelPresetChange = (presetName: string) => {
+    const preset = presets.find(p => p.name === presetName);
     if (preset) {
       setPanelSpecs(preset);
     }
   };
-  const handleSavePreset = () => {
+  
+  const handleSavePreset = async () => {
     if (newPresetName.trim() && panelSpecs.voltage > 0 && panelSpecs.current > 0) {
       const newPreset: PanelPreset = {
         id: `custom-${Date.now()}`,
@@ -85,14 +124,22 @@ export function CalculatorPage() {  // Local state management - no context depen
         category: 'residential'
       };
       
-      setCustomPresets(prev => [...prev, newPreset]);
-      setNewPresetName('');
-      setIsCreatingPreset(false);
+      try {
+        await addPreset(newPreset);
+        setNewPresetName('');
+        setIsCreatingPreset(false);
+      } catch (error) {
+        console.error('Failed to save preset:', error);
+      }
     }
   };
 
-  const handleDeletePreset = (presetName: string) => {
-    setCustomPresets(prev => prev.filter(p => p.name !== presetName));
+  const handleDeletePreset = async (presetName: string) => {
+    try {
+      await deletePreset(presetName);
+    } catch (error) {
+      console.error('Failed to delete preset:', error);
+    }
   };
 
   const handleCalculate = () => {
@@ -280,10 +327,10 @@ export function CalculatorPage() {  // Local state management - no context depen
                 <Select value={panelSpecs.name} onValueChange={handlePanelPresetChange}>
                   <SelectTrigger id="panel-preset" className="mt-1">
                     <SelectValue placeholder="Select a panel preset" />
-                  </SelectTrigger>
-                  <SelectContent>
+                  </SelectTrigger>                  <SelectContent>
+                    {/* Standard Presets */}
                     <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">Standard Presets</div>
-                    {PANEL_PRESETS.map((preset) => (
+                    {presets.filter(preset => !preset.id.startsWith('custom-')).map((preset) => (
                       <SelectItem key={preset.name} value={preset.name}>
                         <div className="flex flex-col">
                           <span className="font-medium">{preset.name}</span>
@@ -293,10 +340,12 @@ export function CalculatorPage() {  // Local state management - no context depen
                         </div>
                       </SelectItem>
                     ))}
-                    {customPresets.length > 0 && (
+                    
+                    {/* Custom Presets */}
+                    {presets.filter(preset => preset.id.startsWith('custom-')).length > 0 && (
                       <>
                         <div className="px-2 py-1 text-xs font-semibold text-muted-foreground border-t">Custom Presets</div>
-                        {customPresets.map((preset) => (
+                        {presets.filter(preset => preset.id.startsWith('custom-')).map((preset) => (
                           <SelectItem key={preset.name} value={preset.name}>
                             <div className="flex items-center justify-between w-full">
                               <div className="flex flex-col">
@@ -635,9 +684,8 @@ export function CalculatorPage() {  // Local state management - no context depen
                 <Select value={selectedCountryId} onValueChange={handleCountryChange}>
                   <SelectTrigger id="country-select" className="mt-1 bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800">
                     <SelectValue placeholder="Select your country" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COUNTRIES.map((country) => (
+                  </SelectTrigger>                  <SelectContent>
+                    {countries.map((country) => (
                       <SelectItem key={country.id} value={country.id}>
                         <div className="flex items-center gap-3">
                           <span className="text-lg min-w-[24px]">{country.currency.symbol}</span>

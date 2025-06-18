@@ -407,7 +407,6 @@ export class DatabaseOperations {
     
     return id;
   }
-
   getCalculationHistory(limit: number = 50): Array<{
     id: string;
     panel_specs: string;
@@ -429,6 +428,42 @@ export class DatabaseOperations {
       results: string;
       created_at: string;
     }>;
+  }
+
+  // Database seeding methods
+  seedCountry(country: CountryPricing): boolean {
+    try {
+      const stmt = this.db.prepare(`
+        INSERT OR IGNORE INTO countries (
+          id, name, currency_code, currency_name, currency_symbol,
+          panel_cost_per_watt, installation_cost_per_watt, electricity_rate,
+          labor_rate, permit_cost, max_system_voltage, requires_permit,
+          grid_tie_allowed, net_metering_available
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      
+      const result = stmt.run(
+        country.id,
+        country.name,
+        country.currency.code,
+        country.currency.name,
+        country.currency.symbol,
+        country.pricing.panelCostPerWatt,
+        country.pricing.installationCostPerWatt,
+        country.pricing.electricityRate,
+        country.pricing.laborRate,
+        country.pricing.permitCost,
+        country.regulations.maxSystemVoltage,
+        country.regulations.requiresPermit ? 1 : 0,
+        country.regulations.gridTieAllowed ? 1 : 0,
+        country.regulations.netMeteringAvailable ? 1 : 0
+      );
+      
+      return result.changes > 0;
+    } catch (error) {
+      console.error('Failed to seed country:', error);
+      return false;
+    }
   }
 }
 

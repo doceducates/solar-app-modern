@@ -18,21 +18,21 @@ export async function POST() {
         presets: existingPresets.length 
       });
     }
-    
-    // Seed countries
+      // Seed countries
     let countriesSeeded = 0;
     if (existingCountries.length === 0) {
-      const dbInstance = db['db']; // Access the private db instance
-      const insertCountry = dbInstance.prepare(`
-        INSERT OR IGNORE INTO countries (
-          id, name, currency_code, currency_name, currency_symbol,
-          panel_cost_per_watt, installation_cost_per_watt, electricity_rate,
-          labor_rate, permit_cost, max_system_voltage, requires_permit,
-          grid_tie_allowed, net_metering_available
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-      
       for (const country of COUNTRIES) {
+        // Use the addCountry method if it exists, or create one
+        const dbInstance = (db as any).db; // Access the private db instance
+        const insertCountry = dbInstance.prepare(`
+          INSERT OR IGNORE INTO countries (
+            id, name, currency_code, currency_name, currency_symbol,
+            panel_cost_per_watt, installation_cost_per_watt, electricity_rate,
+            labor_rate, permit_cost, max_system_voltage, requires_permit,
+            grid_tie_allowed, net_metering_available
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        
         insertCountry.run(
           country.id,
           country.name,

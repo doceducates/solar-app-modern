@@ -32,11 +32,13 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider>
-          <SolarProvider>
-            <AppLayout>
-              {children}
-            </AppLayout>
-          </SolarProvider>
+          <DatabaseInitializer>
+            <SolarProvider>
+              <AppLayout>
+                {children}
+              </AppLayout>
+            </SolarProvider>
+          </DatabaseInitializer>
         </ThemeProvider>
       </body>
     </html>
