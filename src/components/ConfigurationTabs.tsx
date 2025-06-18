@@ -1,8 +1,10 @@
 'use client';
 
-import { ArrowRight, Link, Merge, AlertTriangle, CheckCircle } from 'lucide-react';
+import { AlertTriangle, Zap, Plus, Combine } from 'lucide-react';
 import { ConfigurationResults, PanelSpecifications, SystemConfiguration, SafetyChecks } from '@/types';
-import { cn } from '@/lib/utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface ConfigurationTabsProps {
   activeTab: 'series' | 'parallel' | 'combined';

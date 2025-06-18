@@ -3,6 +3,10 @@
 import { Settings, Info, Lightbulb } from 'lucide-react';
 import { PanelSpecifications, SystemConfiguration } from '@/types';
 import { PANEL_PRESETS } from '@/constants/panels';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface PanelInputProps {
   panelSpecs: PanelSpecifications;
@@ -50,36 +54,35 @@ export default function PanelInput({
       [field]: value
     });
   };
-
   return (
     <div className="space-y-6">
       {/* Panel Presets */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Settings className="w-5 h-5 text-blue-500" />
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="w-5 h-5 text-blue-500" />
             Panel Specifications
-          </h2>
-        </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
 
-        {/* Preset Selection */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        {/* Preset Selection */}        <div className="mb-6">
+          <Label className="text-sm font-medium">
             Quick Panel Presets (Auto-fills all values):
-          </label>          <select
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            onChange={(e) => handlePresetChange(e.target.value)}
-            defaultValue=""
-            aria-label="Select panel preset"
-          >
-            <option value="">Select a preset or enter custom values below</option>
-            {PANEL_PRESETS.map((preset) => (
-              <option key={preset.id} value={preset.id}>
-                {preset.name} (Vmp: {preset.voltage}V, Imp: {preset.current}A)
-              </option>
-            ))}
-            <option value="custom">Custom Configuration (Clear all fields)</option>
-          </select>
+          </Label>
+          <Select onValueChange={handlePresetChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a preset or enter custom values below" />
+            </SelectTrigger>
+            <SelectContent>
+              {PANEL_PRESETS.map((preset) => (
+                <SelectItem key={preset.id} value={preset.id}>
+                  {preset.name} (Vmp: {preset.voltage}V, Imp: {preset.current}A)
+                </SelectItem>
+              ))}
+              <SelectItem value="custom">Custom Configuration (Clear all fields)</SelectItem>
+            </SelectContent>
+          </Select>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 italic">
             💡 Tip: If your panel matches one of these presets, select it to auto-fill all fields.
           </p>
@@ -94,21 +97,18 @@ export default function PanelInput({
           <p className="text-sm text-blue-700 dark:text-blue-300">
             Enter your panel&apos;s operating values (Vmp & Imp) - these determine actual power output
           </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        </div>        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <Label className="text-sm font-medium">
               Voltage per Panel (Vmp) <span className="text-red-500">*</span>
-            </label>
-            <input
+            </Label>
+            <Input
               type="number"
               step="0.1"
               min="0"
               placeholder="e.g., 40.3"
               value={panelSpecs.voltage || ''}
               onChange={(e) => handleSpecChange('voltage', parseFloat(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Enter &quot;Voltage at Maximum Power (Vmp)&quot; from your panel datasheet
@@ -116,17 +116,15 @@ export default function PanelInput({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <Label className="text-sm font-medium">
               Current per Panel (Imp) <span className="text-red-500">*</span>
-            </label>
-            <input
+            </Label>
+            <Input
               type="number"
               step="0.1"
               min="0"
               placeholder="e.g., 14.91"
-              value={panelSpecs.current || ''}
-              onChange={(e) => handleSpecChange('current', parseFloat(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              value={panelSpecs.current || ''}              onChange={(e) => handleSpecChange('current', parseFloat(e.target.value) || 0)}
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Enter &quot;Current at Maximum Power (Imp)&quot; from your panel datasheet
@@ -134,16 +132,14 @@ export default function PanelInput({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <Label className="text-sm font-medium">
               Number of Panels <span className="text-red-500">*</span>
-            </label>
-            <input
+            </Label>            <Input
               type="number"
               min="1"
               placeholder="e.g., 4"
               value={systemConfig.panels || ''}
               onChange={(e) => handleConfigChange('panels', parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Total number of panels in your solar array
@@ -162,23 +158,22 @@ export default function PanelInput({
               placeholder="e.g., 85"
               value={systemConfig.efficiency || ''}
               onChange={(e) => handleConfigChange('efficiency', parseFloat(e.target.value) || 85)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            />
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"            />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Account for real-world losses (temperature, shading, inverter losses)
             </p>
           </div>
         </div>
-      </div>
-
-      {/* Safety & System Design Values */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Info className="w-5 h-5 text-green-500" />
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
+        </CardContent>
+      </Card>      {/* Safety & System Design Values */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Info className="w-5 h-5 text-green-500" />
             Safety & System Design Values
-          </h3>
-        </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
           Optional but recommended for safety validation and proper system design.
         </p>
@@ -280,19 +275,18 @@ export default function PanelInput({
               value={panelSpecs.maxSystemVoltage || ''}
               onChange={(e) => handleSpecChange('maxSystemVoltage', parseInt(e.target.value) || 0)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            />            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               <strong>Find in datasheet:</strong> Often 600V, 1000V, or 1500V
             </p>
           </div>
         </div>
-      </div>
-
-      {/* Combined Configuration Settings */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
-          Combined Configuration Settings
-        </h3>
+        </CardContent>
+      </Card>      {/* Combined Configuration Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Combined Configuration Settings</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -322,13 +316,13 @@ export default function PanelInput({
               value={systemConfig.panelsPerGroup || ''}
               onChange={(e) => handleConfigChange('panelsPerGroup', parseInt(e.target.value) || 1)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            />            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Number of panels connected in series within each string
             </p>
           </div>
         </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
