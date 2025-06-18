@@ -50,10 +50,10 @@ export default function PanelInput({
         onPanelSpecsChange(preset);
       }
     }
-  }, [onPanelSpecsChange]);
-  const handleSpecChange = useCallback((field: keyof PanelSpecifications, value: number) => {
+  }, [onPanelSpecsChange]);  const handleSpecChange = useCallback((field: keyof PanelSpecifications, value: number) => {
     const newSpecs = { ...panelSpecs };
-    newSpecs[field] = value;
+    // Type assertion needed because PanelSpecifications has mixed property types
+    (newSpecs as Record<string, unknown>)[field] = value;
     onPanelSpecsChange(newSpecs);
   }, [panelSpecs, onPanelSpecsChange]);
 
