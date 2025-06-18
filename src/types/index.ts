@@ -48,6 +48,24 @@ export interface SafetyCheck {
   recommendation?: string;
 }
 
+export interface SafetyChecks {
+  series?: {
+    errors?: string[];
+    warnings?: string[];
+    info?: string[];
+  };
+  parallel?: {
+    errors?: string[];
+    warnings?: string[];
+    info?: string[];
+  };
+  combined?: {
+    errors?: string[];
+    warnings?: string[];
+    info?: string[];
+  };
+}
+
 export interface CostAnalysis {
   panelCost: number;
   installationCost: number;

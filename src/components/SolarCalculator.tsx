@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Calculator, Sun, Zap } from 'lucide-react';
-import { PanelSpecifications, SystemConfiguration, ConfigurationResults } from '@/types';
+import { PanelSpecifications, SystemConfiguration, ConfigurationResults, SafetyChecks } from '@/types';
 import { PANEL_PRESETS } from '@/constants/panels';
 import { calculateAllConfigurations, performAllSafetyChecks } from '@/lib/calculations';
 import PanelInput from './PanelInput';
@@ -20,7 +20,7 @@ export default function SolarCalculator() {
   });
   const [results, setResults] = useState<ConfigurationResults | null>(null);
   const [activeTab, setActiveTab] = useState<'series' | 'parallel' | 'combined'>('series');
-  const [safetyChecks, setSafetyChecks] = useState<any>({});
+  const [safetyChecks, setSafetyChecks] = useState<SafetyChecks>({});
 
   // Calculate results whenever inputs change
   useEffect(() => {

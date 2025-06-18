@@ -4,6 +4,7 @@ import {
   CalculationResults,
   ConfigurationResults,
   SafetyCheck,
+  SafetyChecks,
   CostAnalysis,
   EnvironmentalImpact
 } from '@/types';
@@ -199,11 +200,19 @@ export function checkCombinedSafety(
 export function performAllSafetyChecks(
   panelSpecs: PanelSpecifications,
   config: SystemConfiguration
-): { series: SafetyCheck[]; parallel: SafetyCheck[]; combined: SafetyCheck[] } {
+): SafetyChecks {
+  const convertChecksToFormat = (checks: SafetyCheck[]) => {
+    return {
+      errors: checks.filter(c => c.type === 'error').map(c => c.message),
+      warnings: checks.filter(c => c.type === 'warning').map(c => c.message),
+      info: checks.filter(c => c.type === 'info').map(c => c.message)
+    };
+  };
+
   return {
-    series: checkSeriesSafety(panelSpecs, config),
-    parallel: checkParallelSafety(panelSpecs, config),
-    combined: checkCombinedSafety(panelSpecs, config)
+    series: convertChecksToFormat(checkSeriesSafety(panelSpecs, config)),
+    parallel: convertChecksToFormat(checkParallelSafety(panelSpecs, config)),
+    combined: convertChecksToFormat(checkCombinedSafety(panelSpecs, config))
   };
 }
 
