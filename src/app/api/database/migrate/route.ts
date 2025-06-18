@@ -70,10 +70,14 @@ export async function POST(request: Request) {
         console.error(`❌ ${errorMsg}`);
         errors.push(errorMsg);
       }
-    }
-      // Seed panel presets
+    }    // Seed panel presets
     console.log('🔌 Seeding panel presets...');
     console.log(`Found ${PANEL_PRESETS.length} panel presets to seed`);
+    
+    // Debug: Check table schema
+    const schema = db.getTableSchema('panel_presets');
+    console.log('Panel presets table columns:', schema.map(col => col.name));
+    
     for (const preset of PANEL_PRESETS) {
       try {
         console.log(`Attempting to seed preset: ${preset.name}`);

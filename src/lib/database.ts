@@ -667,8 +667,8 @@ export class DatabaseOperations {
         preset.length || null,
         preset.width || null,
         preset.thickness || null,
-        preset.weight || null,
-        preset.powerTolerancePositive || null,        preset.powerToleranceNegative || null,
+        preset.weight || null,        preset.powerTolerancePositive || null,
+        preset.powerToleranceNegative || null,
         preset.bifacial ? 1 : 0,
         preset.bifacialFactor || null,
         preset.cellType || null,
@@ -679,7 +679,8 @@ export class DatabaseOperations {
         preset.warrantyYears || null,
         preset.degradationFirstYear || null,
         preset.degradationAnnual || null,
-        false, // is_custom = false for seeded presets        preset.countryAvailability ? JSON.stringify(preset.countryAvailability) : null
+        0, // is_custom = false for seeded presets
+        preset.countryAvailability ? JSON.stringify(preset.countryAvailability) : null
       );
       
       console.log(`Insert result:`, { changes: result.changes, lastInsertRowid: result.lastInsertRowid });
@@ -689,6 +690,18 @@ export class DatabaseOperations {
       console.error('Failed to seed panel preset:', error);
       console.error('Preset that failed:', preset);
       return false;
+    }
+  }
+  // Debug method to check table schema
+  getTableSchema(tableName: string): Array<{cid: number; name: string; type: string; notnull: number; dflt_value: unknown; pk: number}> {
+    try {
+      const stmt = this.db.prepare(`PRAGMA table_info(${tableName})`);
+      const schema = stmt.all() as Array<{cid: number; name: string; type: string; notnull: number; dflt_value: unknown; pk: number}>;
+      console.log(`Schema for table ${tableName}:`, schema);
+      return schema;
+    } catch (error) {
+      console.error(`Failed to get schema for table ${tableName}:`, error);
+      return [];
     }
   }
 }
