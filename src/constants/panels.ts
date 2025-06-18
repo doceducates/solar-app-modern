@@ -1,42 +1,210 @@
 import { PanelPreset } from '@/types';
 
 // Solar panel presets based on common specifications and Pakistani market
-export const PANEL_PRESETS: PanelPreset[] = [
-  // Trina Solar Vertex Bifacial - Based on TSM-NEG19RC.20 datasheet
+export const PANEL_PRESETS: PanelPreset[] = [  // Trina Solar Vertex Bifacial Series - Based on TSM-NEG19RC.20 datasheet
   {
-    id: 'trina-vertex-605w-bifacial',
-    name: '605W Trina Vertex Bifacial',
-    description: 'TSM-NEG19RC.20 Bifacial Dual Glass Monocrystalline Module - Up to 30% bifacial gain',
+    id: 'trina-vertex-580w-bifacial',
+    name: '580W Trina Vertex Bifacial',
+    description: 'TSM-NEG19RC.20-580 Bifacial Dual Glass Monocrystalline Module - Up to 30% bifacial gain',
     category: 'commercial',
     manufacturer: 'Trina Solar',
-    model: 'TSM-NEG19RC.20',
-    voltage: 41.0, // Estimated Vmp based on datasheet
-    current: 14.76, // Estimated Imp (605W / 41V)
-    power: 605,
-    voc: 49.2, // Estimated based on typical ratio
-    isc: 15.56, // Estimated based on typical ratio
-    maxSeriesFuse: 35, // Estimated based on current
-    maxSystemVoltage: 1500,
+    model: 'TSM-NEG19RC.20-580',
+    voltage: 39.2, // Vmp from datasheet
+    current: 14.79, // Imp from datasheet
+    power: 580,
+    voc: 47.2, // Voc from datasheet
+    isc: 15.65, // Isc from datasheet
+    maxSeriesFuse: 35, // Max Series Fuse Rating (35A)
+    maxSystemVoltage: 1500, // Max System Voltage (1500V DC)
     temperatureCoefficient: -0.30,
-    efficiency: 22.4,
+    efficiency: 21.5,
     
     // Advanced specifications from datasheet
-    length: 2384, // Estimated typical Vertex dimensions
-    width: 1134, // Estimated typical Vertex dimensions
-    thickness: 35, // Typical dual glass thickness
-    weight: 34, // Estimated for dual glass
+    length: 2384, // Module Dimensions (2384×1134×30 mm)
+    width: 1134,
+    thickness: 30,
+    weight: 33.7, // Weight (74.3 lb = 33.7 kg)
     powerTolerancePositive: 5,
     powerToleranceNegative: 0,
     bifacial: true,
     bifacialFactor: 30, // Up to 30% back-side power gain
+    cellType: 'Monocrystalline', // 132 cells
+    glassType: 'Dual Glass', // 2.0 mm front, POE/EVA encapsulant
+    frameColor: 'Silver',
+    mechanicalLoadPositive: 5400, // From datasheet
+    mechanicalLoadNegative: 2400, // From datasheet    warrantyYears: 25,
+    degradationFirstYear: 2.0, // First year degradation
+    degradationAnnual: 0.40, // Annual degradation
+    countryAvailability: ['pakistan', 'india', 'usa', 'germany', 'australia']
+  },
+  {
+    id: 'trina-vertex-585w-bifacial',
+    name: '585W Trina Vertex Bifacial',
+    description: 'TSM-NEG19RC.20-585 Bifacial Dual Glass Monocrystalline Module - Up to 30% bifacial gain',
+    category: 'commercial',
+    manufacturer: 'Trina Solar',
+    model: 'TSM-NEG19RC.20-585',
+    voltage: 39.5, // Vmp from datasheet
+    current: 14.82, // Imp from datasheet
+    power: 585,
+    voc: 47.5, // Voc from datasheet
+    isc: 15.68, // Isc from datasheet
+    maxSeriesFuse: 35,
+    maxSystemVoltage: 1500,
+    temperatureCoefficient: -0.30,
+    efficiency: 21.6,
+    
+    length: 2384,
+    width: 1134,
+    thickness: 30,
+    weight: 33.7,
+    powerTolerancePositive: 5,
+    powerToleranceNegative: 0,
+    bifacial: true,
+    bifacialFactor: 30,
     cellType: 'Monocrystalline',
     glassType: 'Dual Glass',
     frameColor: 'Silver',
-    mechanicalLoadPositive: 5400, // From datasheet
-    mechanicalLoadNegative: 2400, // From datasheet
+    mechanicalLoadPositive: 5400,
+    mechanicalLoadNegative: 2400,    warrantyYears: 25,
+    degradationFirstYear: 2.0,
+    degradationAnnual: 0.40,
+    countryAvailability: ['pakistan', 'india', 'usa', 'germany', 'australia']
+  },
+  {
+    id: 'trina-vertex-590w-bifacial',
+    name: '590W Trina Vertex Bifacial',
+    description: 'TSM-NEG19RC.20-590 Bifacial Dual Glass Monocrystalline Module - Up to 30% bifacial gain',
+    category: 'commercial',
+    manufacturer: 'Trina Solar',
+    model: 'TSM-NEG19RC.20-590',
+    voltage: 39.7, // Vmp from datasheet
+    current: 14.86, // Imp from datasheet
+    power: 590,
+    voc: 47.8, // Voc from datasheet
+    isc: 15.72, // Isc from datasheet
+    maxSeriesFuse: 35,
+    maxSystemVoltage: 1500,
+    temperatureCoefficient: -0.30,
+    efficiency: 21.8,
+    
+    length: 2384,
+    width: 1134,
+    thickness: 30,
+    weight: 33.7,
+    powerTolerancePositive: 5,
+    powerToleranceNegative: 0,
+    bifacial: true,
+    bifacialFactor: 30,
+    cellType: 'Monocrystalline',
+    glassType: 'Dual Glass',
+    frameColor: 'Silver',
+    mechanicalLoadPositive: 5400,
+    mechanicalLoadNegative: 2400,
+    warrantyYears: 25,    degradationFirstYear: 2.0,
+    degradationAnnual: 0.40,
+    countryAvailability: ['pakistan', 'india', 'usa', 'germany', 'australia']
+  },
+  {
+    id: 'trina-vertex-595w-bifacial',
+    name: '595W Trina Vertex Bifacial',
+    description: 'TSM-NEG19RC.20-595 Bifacial Dual Glass Monocrystalline Module - Up to 30% bifacial gain',
+    category: 'commercial',
+    manufacturer: 'Trina Solar',
+    model: 'TSM-NEG19RC.20-595',
+    voltage: 40.0, // Vmp from datasheet
+    current: 14.89, // Imp from datasheet
+    power: 595,
+    voc: 48.1, // Voc from datasheet
+    isc: 15.76, // Isc from datasheet
+    maxSeriesFuse: 35,
+    maxSystemVoltage: 1500,
+    temperatureCoefficient: -0.30,
+    efficiency: 22.0,
+    
+    length: 2384,
+    width: 1134,
+    thickness: 30,
+    weight: 33.7,
+    powerTolerancePositive: 5,
+    powerToleranceNegative: 0,
+    bifacial: true,
+    bifacialFactor: 30,
+    cellType: 'Monocrystalline',
+    glassType: 'Dual Glass',
+    frameColor: 'Silver',
+    mechanicalLoadPositive: 5400,
+    mechanicalLoadNegative: 2400,
     warrantyYears: 25,
-    degradationFirstYear: 2.0, // Trina typical
-    degradationAnnual: 0.55, // Trina typical
+    degradationFirstYear: 2.0,    degradationAnnual: 0.40,
+    countryAvailability: ['pakistan', 'india', 'usa', 'germany', 'australia']
+  },
+  {
+    id: 'trina-vertex-600w-bifacial',
+    name: '600W Trina Vertex Bifacial',
+    description: 'TSM-NEG19RC.20-600 Bifacial Dual Glass Monocrystalline Module - Up to 30% bifacial gain',
+    category: 'commercial',
+    manufacturer: 'Trina Solar',
+    model: 'TSM-NEG19RC.20-600',
+    voltage: 40.3, // Vmp from datasheet
+    current: 14.91, // Imp from datasheet
+    power: 600,
+    voc: 48.4, // Voc from datasheet
+    isc: 15.80, // Isc from datasheet
+    maxSeriesFuse: 35,
+    maxSystemVoltage: 1500,
+    temperatureCoefficient: -0.30,
+    efficiency: 22.2,
+    
+    length: 2384,
+    width: 1134,
+    thickness: 30,
+    weight: 33.7,
+    powerTolerancePositive: 5,
+    powerToleranceNegative: 0,
+    bifacial: true,
+    bifacialFactor: 30,
+    cellType: 'Monocrystalline',
+    glassType: 'Dual Glass',
+    frameColor: 'Silver',    mechanicalLoadPositive: 5400,
+    mechanicalLoadNegative: 2400,
+    warrantyYears: 25,
+    degradationFirstYear: 2.0,
+    degradationAnnual: 0.40,
+    countryAvailability: ['pakistan', 'india', 'usa', 'germany', 'australia']
+  },
+  {
+    id: 'trina-vertex-605w-bifacial',
+    name: '605W Trina Vertex Bifacial',
+    description: 'TSM-NEG19RC.20-605 Bifacial Dual Glass Monocrystalline Module - Up to 30% bifacial gain',
+    category: 'commercial',
+    manufacturer: 'Trina Solar',
+    model: 'TSM-NEG19RC.20-605',
+    voltage: 40.5, // Vmp from datasheet
+    current: 14.94, // Imp from datasheet
+    power: 605,
+    voc: 48.7, // Voc from datasheet
+    isc: 15.83, // Isc from datasheet
+    maxSeriesFuse: 35,
+    maxSystemVoltage: 1500,
+    temperatureCoefficient: -0.30,
+    efficiency: 22.4,
+    
+    length: 2384,
+    width: 1134,
+    thickness: 30,
+    weight: 33.7,
+    powerTolerancePositive: 5,
+    powerToleranceNegative: 0,
+    bifacial: true,
+    bifacialFactor: 30,
+    cellType: 'Monocrystalline',
+    glassType: 'Dual Glass',
+    frameColor: 'Silver',
+    mechanicalLoadPositive: 5400,    mechanicalLoadNegative: 2400,
+    warrantyYears: 25,
+    degradationFirstYear: 2.0,
+    degradationAnnual: 0.40,
     countryAvailability: ['pakistan', 'india', 'usa', 'germany', 'australia']
   },
   
@@ -199,6 +367,212 @@ export const PANEL_PRESETS: PanelPreset[] = [
     maxSystemVoltage: 600,
     temperatureCoefficient: -0.45,
     efficiency: 15.8
+  },
+
+  // Trina Solar NOCT Series - Based on common market specifications
+  {
+    id: 'trina-noct-442w',
+    name: '442W Trina NOCT Standard',
+    description: 'TSM-NEG9R.28-442 Standard Monocrystalline Module - Cost-effective option',
+    category: 'residential',
+    manufacturer: 'Trina Solar',
+    model: 'TSM-NEG9R.28-442',
+    voltage: 36.8, // Vmp typical for NOCT series
+    current: 12.00, // Imp calculated from power/voltage
+    power: 442,
+    voc: 44.7, // Voc typical for NOCT series
+    isc: 12.61, // Isc typical for NOCT series
+    maxSeriesFuse: 25,
+    maxSystemVoltage: 1500,
+    temperatureCoefficient: -0.35,
+    efficiency: 21.5,
+    
+    length: 2278,
+    width: 1134,
+    thickness: 35,
+    weight: 24.5,
+    powerTolerancePositive: 5,
+    powerToleranceNegative: 0,
+    bifacial: false,
+    cellType: 'Monocrystalline',
+    glassType: 'Single Glass',
+    frameColor: 'Silver',
+    mechanicalLoadPositive: 5400,
+    mechanicalLoadNegative: 2400,
+    warrantyYears: 25,
+    degradationFirstYear: 2.0,
+    degradationAnnual: 0.50,
+    countryAvailability: ['pakistan', 'india', 'usa', 'germany', 'uk']
+  },
+  {
+    id: 'trina-noct-446w',
+    name: '446W Trina NOCT Standard',
+    description: 'TSM-NEG9R.28-446 Standard Monocrystalline Module - Cost-effective option',
+    category: 'residential',
+    manufacturer: 'Trina Solar',
+    model: 'TSM-NEG9R.28-446',
+    voltage: 37.1, // Vmp from typical NOCT datasheet
+    current: 12.02, // Imp calculated
+    power: 446,
+    voc: 45.0, // Voc from typical NOCT datasheet
+    isc: 12.64, // Isc from typical NOCT datasheet
+    maxSeriesFuse: 25,
+    maxSystemVoltage: 1500,
+    temperatureCoefficient: -0.35,
+    efficiency: 21.6,
+    
+    length: 2278,
+    width: 1134,
+    thickness: 35,
+    weight: 24.5,
+    powerTolerancePositive: 5,
+    powerToleranceNegative: 0,
+    bifacial: false,
+    cellType: 'Monocrystalline',
+    glassType: 'Single Glass',
+    frameColor: 'Silver',
+    mechanicalLoadPositive: 5400,
+    mechanicalLoadNegative: 2400,
+    warrantyYears: 25,
+    degradationFirstYear: 2.0,
+    degradationAnnual: 0.50,
+    countryAvailability: ['pakistan', 'india', 'usa', 'germany', 'uk']
+  },
+  {
+    id: 'trina-noct-450w',
+    name: '450W Trina NOCT Standard',
+    description: 'TSM-NEG9R.28-450 Standard Monocrystalline Module - Cost-effective option',
+    category: 'residential',
+    manufacturer: 'Trina Solar',
+    model: 'TSM-NEG9R.28-450',
+    voltage: 37.3, // Vmp from typical NOCT datasheet
+    current: 12.05, // Imp calculated
+    power: 450,
+    voc: 45.3, // Voc from typical NOCT datasheet
+    isc: 12.67, // Isc from typical NOCT datasheet
+    maxSeriesFuse: 25,
+    maxSystemVoltage: 1500,
+    temperatureCoefficient: -0.35,
+    efficiency: 21.8,
+    
+    length: 2278,
+    width: 1134,
+    thickness: 35,
+    weight: 24.5,
+    powerTolerancePositive: 5,
+    powerToleranceNegative: 0,
+    bifacial: false,
+    cellType: 'Monocrystalline',
+    glassType: 'Single Glass',
+    frameColor: 'Silver',
+    mechanicalLoadPositive: 5400,
+    mechanicalLoadNegative: 2400,
+    warrantyYears: 25,
+    degradationFirstYear: 2.0,
+    degradationAnnual: 0.50,
+    countryAvailability: ['pakistan', 'india', 'usa', 'germany', 'uk']
+  },
+  {
+    id: 'trina-noct-454w',
+    name: '454W Trina NOCT Standard',
+    description: 'TSM-NEG9R.28-454 Standard Monocrystalline Module - Cost-effective option',
+    category: 'residential',
+    manufacturer: 'Trina Solar',
+    model: 'TSM-NEG9R.28-454',
+    voltage: 37.6, // Vmp from typical NOCT datasheet
+    current: 12.08, // Imp calculated
+    power: 454,
+    voc: 45.6, // Voc from typical NOCT datasheet
+    isc: 12.70, // Isc from typical NOCT datasheet
+    maxSeriesFuse: 25,
+    maxSystemVoltage: 1500,
+    temperatureCoefficient: -0.35,
+    efficiency: 22.0,
+    
+    length: 2278,
+    width: 1134,
+    thickness: 35,
+    weight: 24.5,
+    powerTolerancePositive: 5,
+    powerToleranceNegative: 0,
+    bifacial: false,
+    cellType: 'Monocrystalline',
+    glassType: 'Single Glass',
+    frameColor: 'Silver',
+    mechanicalLoadPositive: 5400,
+    mechanicalLoadNegative: 2400,
+    warrantyYears: 25,
+    degradationFirstYear: 2.0,
+    degradationAnnual: 0.50,
+    countryAvailability: ['pakistan', 'india', 'usa', 'germany', 'uk']
+  },
+  {
+    id: 'trina-noct-458w',
+    name: '458W Trina NOCT Standard',
+    description: 'TSM-NEG9R.28-458 Standard Monocrystalline Module - Cost-effective option',
+    category: 'residential',
+    manufacturer: 'Trina Solar',
+    model: 'TSM-NEG9R.28-458',
+    voltage: 37.8, // Vmp from typical NOCT datasheet
+    current: 12.12, // Imp calculated
+    power: 458,
+    voc: 45.9, // Voc from typical NOCT datasheet
+    isc: 12.73, // Isc from typical NOCT datasheet
+    maxSeriesFuse: 25,
+    maxSystemVoltage: 1500,
+    temperatureCoefficient: -0.35,
+    efficiency: 22.1,
+    
+    length: 2278,
+    width: 1134,
+    thickness: 35,
+    weight: 24.5,
+    powerTolerancePositive: 5,
+    powerToleranceNegative: 0,
+    bifacial: false,
+    cellType: 'Monocrystalline',
+    glassType: 'Single Glass',
+    frameColor: 'Silver',
+    mechanicalLoadPositive: 5400,
+    mechanicalLoadNegative: 2400,
+    warrantyYears: 25,
+    degradationFirstYear: 2.0,
+    degradationAnnual: 0.50,
+    countryAvailability: ['pakistan', 'india', 'usa', 'germany', 'uk']
+  },
+  {
+    id: 'trina-noct-461w',
+    name: '461W Trina NOCT Standard',
+    description: 'TSM-NEG9R.28-461 Standard Monocrystalline Module - Cost-effective option',
+    category: 'residential',
+    manufacturer: 'Trina Solar',
+    model: 'TSM-NEG9R.28-461',
+    voltage: 38.0, // Vmp from typical NOCT datasheet
+    current: 12.14, // Imp calculated
+    power: 461,
+    voc: 46.1, // Voc from typical NOCT datasheet
+    isc: 12.76, // Isc from typical NOCT datasheet
+    maxSeriesFuse: 25,
+    maxSystemVoltage: 1500,
+    temperatureCoefficient: -0.35,
+    efficiency: 22.3,
+    
+    length: 2278,
+    width: 1134,
+    thickness: 35,
+    weight: 24.5,
+    powerTolerancePositive: 5,
+    powerToleranceNegative: 0,
+    bifacial: false,
+    cellType: 'Monocrystalline',
+    glassType: 'Single Glass',
+    frameColor: 'Silver',
+    mechanicalLoadPositive: 5400,
+    mechanicalLoadNegative: 2400,
+    warrantyYears: 25,
+    degradationFirstYear: 2.0,
+    degradationAnnual: 0.50,
+    countryAvailability: ['pakistan', 'india', 'usa', 'germany', 'uk']
   }
 ];
 
