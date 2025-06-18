@@ -23,51 +23,47 @@ export default function SolarCalculator() {
     efficiency: 85,
     seriesGroups: 2,
     panelsPerGroup: 2
-  });
-  const [results, setResults] = useState<ConfigurationResults | null>(null);
+  });  const [results, setResults] = useState<ConfigurationResults | null>(null);
   const [activeTab, setActiveTab] = useState<'series' | 'parallel' | 'combined'>('series');
   const [safetyChecks, setSafetyChecks] = useState<SafetyChecks>({});
   const [costAnalysis, setCostAnalysis] = useState<CostAnalysis | null>(null);
   
-  // Custom cost inputs state
-  const [customCosts, setCustomCosts] = useState({
-    panelCostPerWatt: 30,
-    installationCostPerWatt: 45,
-    electricityRate: 25,
-    laborRate: 800,
-    installationHours: 40,
-    permitCost: 15000
-  });
-  // Get current country data - memoized to prevent unnecessary re-renders
+  // Custom cost inputs state - initialized with default Pakistan values
+  const [customCosts, setCustomCosts] = useState(() => {
+    const defaultCountry = getCountryById('pakistan');
+    return {
+      panelCostPerWatt: defaultCountry?.pricing.panelCostPerWatt || 30,
+      installationCostPerWatt: defaultCountry?.pricing.installationCostPerWatt || 45,
+      electricityRate: defaultCountry?.pricing.electricityRate || 25,
+      laborRate: defaultCountry?.pricing.laborRate || 800,
+      installationHours: 40,
+      permitCost: defaultCountry?.pricing.permitCost || 15000
+    };
+  });  // Get current country data - memoized to prevent unnecessary re-renders
   const currentCountry = useMemo(() => getCountryById(selectedCountry), [selectedCountry]);
 
   // Memoized cost change handler to prevent infinite loops
   const handleCostChange = useCallback((newCosts: typeof customCosts) => {
     setCustomCosts(newCosts);
-  }, []);  // Initialize custom costs when country changes
-  useEffect(() => {
-    if (currentCountry) {
-      setCustomCosts(prevCosts => {
-        // Only update if the country actually changed to prevent loops
-        if (prevCosts.panelCostPerWatt === currentCountry.pricing.panelCostPerWatt &&
-            prevCosts.installationCostPerWatt === currentCountry.pricing.installationCostPerWatt &&
-            prevCosts.electricityRate === currentCountry.pricing.electricityRate &&
-            prevCosts.laborRate === currentCountry.pricing.laborRate &&
-            prevCosts.permitCost === currentCountry.pricing.permitCost) {
-          return prevCosts; // No change needed
-        }
-        
-        return {
-          panelCostPerWatt: currentCountry.pricing.panelCostPerWatt,
-          installationCostPerWatt: currentCountry.pricing.installationCostPerWatt,
-          electricityRate: currentCountry.pricing.electricityRate,
-          laborRate: currentCountry.pricing.laborRate,
-          installationHours: 40,
-          permitCost: currentCountry.pricing.permitCost
-        };
-      });
+  }, []);
+
+  // Handle country change and update costs accordingly
+  const handleCountryChange = useCallback((newCountryId: string) => {
+    setSelectedCountry(newCountryId);
+    
+    // Update costs when country changes
+    const newCountry = getCountryById(newCountryId);
+    if (newCountry) {
+      setCustomCosts(prevCosts => ({
+        panelCostPerWatt: newCountry.pricing.panelCostPerWatt,
+        installationCostPerWatt: newCountry.pricing.installationCostPerWatt,
+        electricityRate: newCountry.pricing.electricityRate,
+        laborRate: newCountry.pricing.laborRate,
+        installationHours: prevCosts.installationHours || 40, // Keep existing hours
+        permitCost: newCountry.pricing.permitCost
+      }));
     }
-  }, [currentCountry]);  // Calculate basic results whenever panel specs or system config change
+  }, []);// Calculate basic results whenever panel specs or system config change
   useEffect(() => {
     if (panelSpecs.voltage > 0 && panelSpecs.current > 0 && systemConfig.panels > 0) {
       const newResults = calculateAllConfigurations(panelSpecs, systemConfig);
@@ -79,32 +75,47 @@ export default function SolarCalculator() {
       setResults(null);
       setSafetyChecks({});
     }
-  }, [panelSpecs, systemConfig]);
+  }, [panelSpecs, systemConfig]);  // Memoize custom costs to prevent infinite loops
+  const memoizedCustomCosts = useMemo(() => ({
+    panelCostPerWatt: customCosts.panelCostPerWatt,
+    installationCostPerWatt: customCosts.installationCostPerWatt,
+    electricityRate: customCosts.electricityRate,
+    laborRate: customCosts.laborRate,
+    installationHours: customCosts.installationHours,
+    permitCost: customCosts.permitCost
+  }), [
+    customCosts.panelCostPerWatt,
+    customCosts.installationCostPerWatt,
+    customCosts.electricityRate,
+    customCosts.laborRate,
+    customCosts.installationHours,
+    customCosts.permitCost
+  ]);
 
   // Calculate cost analysis separately to avoid infinite loops
   useEffect(() => {
-    if (panelSpecs.power > 0 && systemConfig.panels > 0 && currentCountry) {
+    const country = getCountryById(selectedCountry);
+    if (panelSpecs.power > 0 && systemConfig.panels > 0 && country) {
       const totalPower = panelSpecs.power * systemConfig.panels;
       const newCostAnalysis = calculateSystemCost({
         totalPower,
-        country: currentCountry,
-        customCosts
+        country,
+        customCosts: memoizedCustomCosts
       });
       setCostAnalysis(newCostAnalysis);
     } else {
       setCostAnalysis(null);
     }
-  }, [panelSpecs.power, systemConfig.panels, currentCountry, customCosts]);
+  }, [panelSpecs.power, systemConfig.panels, selectedCountry, memoizedCustomCosts]);
   return (
     <div className="space-y-8">
       {/* Input Sections */}
       <div id="input" className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Country & Input Panel */}
-        <div className="xl:col-span-1 space-y-6">
-          <div id="country">
+        <div className="xl:col-span-1 space-y-6">          <div id="country">
             <CountrySelector
               selectedCountry={selectedCountry}
-              onCountryChange={setSelectedCountry}
+              onCountryChange={handleCountryChange}
             />
           </div>
           

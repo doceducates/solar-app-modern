@@ -1,5 +1,7 @@
+'use client';
+
 import React from 'react';
-import { PanelInput } from '../PanelInput';
+import PanelInput from '../PanelInput';
 import { CountrySelector } from '../CountrySelector';
 import { PanelSpecifications, SystemConfiguration } from '@/types';
 
