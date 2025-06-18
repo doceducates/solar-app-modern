@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calculator, Settings, Zap, Play, Globe, Save, Plus, Trash2, Info, HelpCircle, BookOpen, AlertCircle } from 'lucide-react';
+import { Calculator, Settings, Zap, Play, Globe, Trash2, Info, HelpCircle, BookOpen, AlertCircle } from 'lucide-react';
 import { PanelPreset, SystemConfiguration, ConfigurationResults, SafetyChecks } from '@/types';
 import { calculateAllConfigurations, performAllSafetyChecks } from '@/lib/calculations';
 import ConfigurationTabs from '@/components/ConfigurationTabs';
 import ResultsDisplay from '@/components/ResultsDisplay';
+import CustomPresetModal from '@/components/CustomPresetModal';
 import { useCountries, usePanelPresets, useCalculationHistory } from '@/hooks/useDatabase';
 
 export function CalculatorPage() {
@@ -45,10 +46,7 @@ export function CalculatorPage() {
   });
   const [results, setResults] = useState<ConfigurationResults | null>(null);
   const [safetyChecks, setSafetyChecks] = useState<SafetyChecks>({});  const [activeTab, setActiveTab] = useState<'series' | 'parallel' | 'combined'>('series');
-  const [showHelp, setShowHelp] = useState(false);
-    // Custom preset management
-  const [isCreatingPreset, setIsCreatingPreset] = useState(false);
-  const [newPresetName, setNewPresetName] = useState('');
+  const [showHelp, setShowHelp] = useState(false);  // Custom preset management
   
   const [customCosts, setCustomCosts] = useState(() => {
     const defaultCountry = getCountryById('pakistan');
@@ -106,31 +104,12 @@ export function CalculatorPage() {
       setPanelSpecs(preset);
     }
   };
-  
-  const handleSavePreset = async () => {
-    if (newPresetName.trim() && panelSpecs.voltage > 0 && panelSpecs.current > 0) {
-      const newPreset: PanelPreset = {
-        id: `custom-${Date.now()}`,
-        name: newPresetName.trim(),
-        voltage: panelSpecs.voltage,
-        current: panelSpecs.current,
-        power: panelSpecs.voltage * panelSpecs.current,
-        voc: panelSpecs.voc || panelSpecs.voltage * 1.2,
-        isc: panelSpecs.isc || panelSpecs.current * 1.2,
-        maxSeriesFuse: panelSpecs.maxSeriesFuse || Math.ceil(panelSpecs.current * 1.56),
-        maxSystemVoltage: panelSpecs.maxSystemVoltage || 1000,
-        efficiency: panelSpecs.efficiency || 20,
-        description: `Custom preset: ${newPresetName.trim()}`,
-        category: 'residential'
-      };
-      
-      try {
-        await addPreset(newPreset);
-        setNewPresetName('');
-        setIsCreatingPreset(false);
-      } catch (error) {
-        console.error('Failed to save preset:', error);
-      }
+    const handleSavePreset = async (newPreset: PanelPreset) => {
+    try {
+      await addPreset(newPreset);
+    } catch (error) {
+      console.error('Failed to save preset:', error);
+      throw error; // Re-throw so modal can handle the error
     }
   };
 
@@ -372,55 +351,22 @@ export function CalculatorPage() {
                     )}
                   </SelectContent>
                 </Select>
-              </div>
-
-              {/* Custom Preset Creation */}
+              </div>              {/* Custom Preset Creation */}
               <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg border">
-                {!isCreatingPreset ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsCreatingPreset(true)}
-                    className="w-full"
-                    size="sm"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Custom Preset
-                  </Button>
-                ) : (
-                  <div className="space-y-3">
-                    <div>
-                      <Label htmlFor="preset-name">Custom Preset Name</Label>
-                      <Input
-                        id="preset-name"
-                        value={newPresetName}
-                        onChange={(e) => setNewPresetName(e.target.value)}
-                        placeholder="Enter preset name"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={handleSavePreset}
-                        disabled={!newPresetName.trim()}
-                        size="sm"
-                        className="flex-1"
-                      >
-                        <Save className="w-3 h-3 mr-1" />
-                        Save
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setIsCreatingPreset(false);
-                          setNewPresetName('');
-                        }}
-                        size="sm"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>              <div className="grid grid-cols-2 gap-3">
+                <CustomPresetModal
+                  onSave={handleSavePreset}
+                  initialData={{
+                    voltage: panelSpecs.voltage,
+                    current: panelSpecs.current,
+                    voc: panelSpecs.voc,
+                    isc: panelSpecs.isc,
+                    maxSeriesFuse: panelSpecs.maxSeriesFuse,
+                    maxSystemVoltage: panelSpecs.maxSystemVoltage,
+                    temperatureCoefficient: panelSpecs.temperatureCoefficient,
+                    efficiency: panelSpecs.efficiency
+                  }}
+                />
+              </div><div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="voltage" className="text-sm font-semibold flex items-center gap-1">
                     Voltage per Panel (Vmp) <span className="text-red-500">*</span>

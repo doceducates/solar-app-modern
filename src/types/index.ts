@@ -1,15 +1,42 @@
 // Types for Solar Panel Calculator
 
 export interface PanelSpecifications {
-  voltage: number; // Vmp - Operating voltage
-  current: number; // Imp - Operating current
-  power: number; // Pmax - Maximum power
-  voc: number; // Open circuit voltage
-  isc: number; // Short circuit current
+  // Core electrical specifications (required)
+  voltage: number; // Vmp - Maximum Power Voltage
+  current: number; // Imp - Maximum Power Current
+  power: number; // Pmp - Maximum Power
+  voc: number; // Open Circuit Voltage
+  isc: number; // Short Circuit Current
+  
+  // Safety and system specifications
   maxSeriesFuse: number; // Maximum series fuse rating
   maxSystemVoltage: number; // Maximum allowable system voltage
-  temperatureCoefficient?: number; // Power temperature coefficient
-  efficiency?: number; // Panel efficiency percentage
+  temperatureCoefficient?: number; // Power temperature coefficient (%/°C)
+  efficiency?: number; // Module efficiency (%)
+  
+  // Physical specifications (optional for calculations)
+  length?: number; // Module length (mm)
+  width?: number; // Module width (mm)
+  thickness?: number; // Module thickness (mm)
+  weight?: number; // Module weight (kg)
+  
+  // Advanced specifications
+  powerTolerancePositive?: number; // Positive power tolerance (W)
+  powerToleranceNegative?: number; // Negative power tolerance (W)
+  bifacial?: boolean; // Bifacial capability
+  bifacialFactor?: number; // Bifacial power gain (%)
+  cellType?: string; // Cell technology (mono, poly, etc.)
+  glassType?: string; // Glass type (single, dual, etc.)
+  frameColor?: string; // Frame color
+  
+  // Mechanical specifications
+  mechanicalLoadPositive?: number; // Snow load capacity (Pa)
+  mechanicalLoadNegative?: number; // Wind load capacity (Pa)
+  
+  // Warranty and degradation
+  warrantyYears?: number;
+  degradationFirstYear?: number; // First year degradation (%)
+  degradationAnnual?: number; // Annual degradation (%)
 }
 
 export interface PanelPreset extends PanelSpecifications {

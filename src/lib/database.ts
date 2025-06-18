@@ -59,8 +59,7 @@ function createTables(database: Database.Database) {  // Countries table
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
-
-  // Panel presets table
+  // Panel presets table with comprehensive specifications
   database.exec(`
     CREATE TABLE IF NOT EXISTS panel_presets (
       id TEXT PRIMARY KEY,
@@ -69,16 +68,47 @@ function createTables(database: Database.Database) {  // Countries table
       manufacturer TEXT,
       model TEXT,
       category TEXT NOT NULL CHECK (category IN ('residential', 'commercial', 'utility', 'small')),
-      voltage REAL NOT NULL,
-      current REAL NOT NULL,
-      power REAL NOT NULL,
-      voc REAL NOT NULL,
-      isc REAL NOT NULL,
+      
+      -- Core electrical specifications (required)
+      voltage REAL NOT NULL,          -- Vmp (Maximum Power Voltage)
+      current REAL NOT NULL,          -- Imp (Maximum Power Current)  
+      power REAL NOT NULL,            -- Pmp (Maximum Power)
+      voc REAL NOT NULL,              -- Open Circuit Voltage
+      isc REAL NOT NULL,              -- Short Circuit Current
+      
+      -- Safety and system specifications
       max_series_fuse REAL NOT NULL,
       max_system_voltage REAL NOT NULL,
-      temperature_coefficient REAL,
-      efficiency REAL,
+      temperature_coefficient REAL,   -- Power temperature coefficient (%/°C)
+      efficiency REAL,                -- Module efficiency (%)
+      
+      -- Physical specifications
+      length REAL,                    -- Module length (mm)
+      width REAL,                     -- Module width (mm) 
+      thickness REAL,                 -- Module thickness (mm)
+      weight REAL,                    -- Module weight (kg)
+      
+      -- Advanced specifications
+      power_tolerance_positive REAL,  -- Positive power tolerance (W)
+      power_tolerance_negative REAL,  -- Negative power tolerance (W)
+      bifacial BOOLEAN DEFAULT FALSE, -- Bifacial capability
+      bifacial_factor REAL,          -- Bifacial power gain (%)
+      cell_type TEXT,                 -- Cell technology (mono, poly, etc.)
+      glass_type TEXT,                -- Glass type (single, dual, etc.)
+      frame_color TEXT,               -- Frame color
+      
+      -- Mechanical specifications
+      mechanical_load_positive REAL,  -- Snow load capacity (Pa)
+      mechanical_load_negative REAL,  -- Wind load capacity (Pa)
+      
+      -- Warranty and degradation
+      warranty_years INTEGER,
+      degradation_first_year REAL,    -- First year degradation (%)
+      degradation_annual REAL,        -- Annual degradation (%)
+      
+      -- System metadata
       is_custom BOOLEAN DEFAULT FALSE,
+      country_availability TEXT,      -- JSON array of country IDs
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
@@ -465,23 +495,28 @@ export class DatabaseOperations {
       return false;
     }
   }
-
   seedPanelPreset(preset: PanelPreset): boolean {
     try {
       const stmt = this.db.prepare(`
         INSERT OR IGNORE INTO panel_presets (
           id, name, description, manufacturer, model, category,
           voltage, current, power, voc, isc, max_series_fuse,
-          max_system_voltage, temperature_coefficient, efficiency, is_custom
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          max_system_voltage, temperature_coefficient, efficiency,
+          length, width, thickness, weight,
+          power_tolerance_positive, power_tolerance_negative,
+          bifacial, bifacial_factor, cell_type, glass_type, frame_color,
+          mechanical_load_positive, mechanical_load_negative,
+          warranty_years, degradation_first_year, degradation_annual,
+          is_custom, country_availability
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       
       const result = stmt.run(
         preset.id,
         preset.name,
         preset.description || '',
-        preset.manufacturer || '',
-        preset.model || '',
+        preset.manufacturer || null,
+        preset.model || null,
         preset.category,
         preset.voltage,
         preset.current,
@@ -492,7 +527,23 @@ export class DatabaseOperations {
         preset.maxSystemVoltage,
         preset.temperatureCoefficient || null,
         preset.efficiency || null,
-        preset.id.startsWith('custom-') ? 1 : 0
+        preset.length || null,
+        preset.width || null,
+        preset.thickness || null,
+        preset.weight || null,
+        preset.powerTolerancePositive || null,
+        preset.powerToleranceNegative || null,
+        preset.bifacial ? 1 : 0,
+        preset.bifacialFactor || null,
+        preset.cellType || null,
+        preset.glassType || null,        preset.frameColor || null,
+        preset.mechanicalLoadPositive || null,
+        preset.mechanicalLoadNegative || null,
+        preset.warrantyYears || null,
+        preset.degradationFirstYear || null,
+        preset.degradationAnnual || null,
+        false, // is_custom = false for seeded presets
+        preset.countryAvailability ? JSON.stringify(preset.countryAvailability) : null
       );
       
       return result.changes > 0;

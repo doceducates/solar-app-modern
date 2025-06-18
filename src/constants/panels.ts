@@ -2,6 +2,44 @@ import { PanelPreset } from '@/types';
 
 // Solar panel presets based on common specifications and Pakistani market
 export const PANEL_PRESETS: PanelPreset[] = [
+  // Trina Solar Vertex Bifacial - Based on TSM-NEG19RC.20 datasheet
+  {
+    id: 'trina-vertex-605w-bifacial',
+    name: '605W Trina Vertex Bifacial',
+    description: 'TSM-NEG19RC.20 Bifacial Dual Glass Monocrystalline Module - Up to 30% bifacial gain',
+    category: 'commercial',
+    manufacturer: 'Trina Solar',
+    model: 'TSM-NEG19RC.20',
+    voltage: 41.0, // Estimated Vmp based on datasheet
+    current: 14.76, // Estimated Imp (605W / 41V)
+    power: 605,
+    voc: 49.2, // Estimated based on typical ratio
+    isc: 15.56, // Estimated based on typical ratio
+    maxSeriesFuse: 35, // Estimated based on current
+    maxSystemVoltage: 1500,
+    temperatureCoefficient: -0.30,
+    efficiency: 22.4,
+    
+    // Advanced specifications from datasheet
+    length: 2384, // Estimated typical Vertex dimensions
+    width: 1134, // Estimated typical Vertex dimensions
+    thickness: 35, // Typical dual glass thickness
+    weight: 34, // Estimated for dual glass
+    powerTolerancePositive: 5,
+    powerToleranceNegative: 0,
+    bifacial: true,
+    bifacialFactor: 30, // Up to 30% back-side power gain
+    cellType: 'Monocrystalline',
+    glassType: 'Dual Glass',
+    frameColor: 'Silver',
+    mechanicalLoadPositive: 5400, // From datasheet
+    mechanicalLoadNegative: 2400, // From datasheet
+    warrantyYears: 25,
+    degradationFirstYear: 2.0, // Trina typical
+    degradationAnnual: 0.55, // Trina typical
+    countryAvailability: ['pakistan', 'india', 'usa', 'germany', 'australia']
+  },
+  
   // Pakistani Market Panels
   {
     id: '600w-topcon-ntype',
