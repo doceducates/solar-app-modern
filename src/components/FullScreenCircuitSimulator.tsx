@@ -124,10 +124,9 @@ export function FullScreenCircuitSimulator() {
     offset: { x: 0, y: 0 }
   });
   // Canvas scroll state - removed unused variables
-
   // Filter elements based on search and category
   const filteredElements = Object.entries(ELEMENT_CATEGORIES).reduce((acc, [categoryName, elements]) => {
-    if (selectedCategory && selectedCategory !== categoryName) return acc;
+    if (selectedCategory && selectedCategory !== 'all' && selectedCategory !== categoryName) return acc;
     
     const filtered = elements.filter(element => 
       element.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -140,11 +139,11 @@ export function FullScreenCircuitSimulator() {
     
     return acc;
   }, {} as Record<string, typeof ELEMENT_CATEGORIES[keyof typeof ELEMENT_CATEGORIES]>);
-
   // Canvas drawing functions
   const drawGrid = useCallback((ctx: CanvasRenderingContext2D) => {
-    ctx.strokeStyle = '#f3f4f6';
-    ctx.lineWidth = 1;
+    // Use darker grey colors for the grid
+    ctx.strokeStyle = '#6b7280'; // Darker grey for minor grid lines
+    ctx.lineWidth = 0.5;
     
     // Draw grid lines
     for (let x = 0; x <= CANVAS_WIDTH; x += GRID_SIZE) {
@@ -161,8 +160,8 @@ export function FullScreenCircuitSimulator() {
       ctx.stroke();
     }
     
-    // Draw major grid lines every 100px
-    ctx.strokeStyle = '#e5e7eb';
+    // Draw major grid lines every 100px with slightly lighter grey
+    ctx.strokeStyle = '#9ca3af';
     ctx.lineWidth = 1;
     
     for (let x = 0; x <= CANVAS_WIDTH; x += GRID_SIZE * 5) {
@@ -235,12 +234,40 @@ export function FullScreenCircuitSimulator() {
     
     // Draw connections first (so they appear behind elements)
     drawConnections(ctx);
-    
-    // Draw all elements
+      // Draw all elements
     simulation.elements.forEach(element => {
       element.selected = selectedElements.includes(element.id);
       element.draw(ctx);
     });
+    
+    // Draw terminal highlights for connection mode
+    if (connectionMode.active || tool === 'connect') {
+      simulation.elements.forEach(element => {
+        element.terminals.forEach(terminal => {
+          const terminalPos = element.getTerminalPosition(terminal.id);
+          
+          // Highlight the start terminal in green
+          if (connectionMode.startElement === element.id && connectionMode.startTerminal === terminal.id) {
+            ctx.fillStyle = '#22c55e'; // Green for start terminal
+            ctx.beginPath();
+            ctx.arc(terminalPos.x, terminalPos.y, 8, 0, 2 * Math.PI);
+            ctx.fill();
+          } 
+          // Highlight other terminals in yellow when in connection mode
+          else if (connectionMode.active) {
+            ctx.fillStyle = '#fbbf24'; // Yellow for potential connection terminals
+            ctx.beginPath();
+            ctx.arc(terminalPos.x, terminalPos.y, 6, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Add white border for visibility
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+        });
+      });
+    }
     
     // Draw selection indicators for connection mode
     if (connectionMode.active && connectionMode.startElement) {
@@ -257,7 +284,7 @@ export function FullScreenCircuitSimulator() {
         ctx.setLineDash([]);
       }
     }
-  }, [simulation, selectedElements, drawGrid, drawConnections, connectionMode]);
+  }, [simulation, selectedElements, drawGrid, drawConnections, connectionMode, tool]);
 
   // Event handlers
   const getCanvasCoordinates = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -329,9 +356,28 @@ export function FullScreenCircuitSimulator() {
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+      // Handle dragging
     if (dragState.isDragging && dragState.draggedElement) {
-      const coords = getCanvasCoordinates(e);
-      updateElementPosition(dragState.draggedElement, coords);
+      const newX = Math.round((x - dragState.offset.x) / GRID_SIZE) * GRID_SIZE;
+      const newY = Math.round((y - dragState.offset.y) / GRID_SIZE) * GRID_SIZE;
+      
+      setSimulation(prev => ({
+        ...prev,
+        elements: prev.elements.map(element => {
+          if (element.id === dragState.draggedElement) {
+            // Mutate the element's position directly (since it's a class instance)
+            element.position.x = newX;
+            element.position.y = newY;
+          }
+          return element;
+        })
+      }));
     }
   };
 
@@ -382,23 +428,7 @@ export function FullScreenCircuitSimulator() {
         x: coords.x - element.position.x,
         y: coords.y - element.position.y
       }
-    });
-  };
-
-  const updateElementPosition = (elementId: string, coords: Position) => {
-    setSimulation(prev => ({
-      ...prev,
-      elements: prev.elements.map(element => {
-        if (element.id === elementId) {
-          element.position = {
-            x: snapToGrid(coords.x - dragState.offset.x),
-            y: snapToGrid(coords.y - dragState.offset.y)
-          };
-        }
-        return element;
-      })
-    }));
-  };
+    });  };
 
   const toggleElementSelection = (elementId: string) => {
     setSelectedElements(prev =>
@@ -622,14 +652,13 @@ export function FullScreenCircuitSimulator() {
               className="pl-9"
             />
           </div>
-          
-          {/* Category Filter */}
-          <Select value={selectedCategory || ''} onValueChange={(value) => setSelectedCategory(value || null)}>
+            {/* Category Filter */}
+          <Select value={selectedCategory || 'all'} onValueChange={(value) => setSelectedCategory(value === 'all' ? null : value)}>
             <SelectTrigger className="mt-2">
               <SelectValue placeholder="All categories" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All categories</SelectItem>
+              <SelectItem value="all">All categories</SelectItem>
               {Object.keys(ELEMENT_CATEGORIES).map(category => (
                 <SelectItem key={category} value={category}>{category}</SelectItem>
               ))}
