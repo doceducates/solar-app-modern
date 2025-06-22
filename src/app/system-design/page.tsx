@@ -1,5 +1,5 @@
-import SystemDesignPageRedesigned from '@/components/pages/SystemDesignPageRedesigned';
+import SystemDesign from '@/components/pages/SystemDesign';
 
-export default function SystemDesign() {
-  return <SystemDesignPageRedesigned />;
+export default function SystemDesignPage() {
+  return <SystemDesign />;
 }
